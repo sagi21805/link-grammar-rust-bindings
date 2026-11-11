@@ -1,0 +1,12 @@
+[package]
+name = "link-grammar"
+description = "Safe Rust bindings to the link-grammar parser"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+extend = "1"
+link-grammar-sys = { path = "../link-grammar-sys" }
+thiserror = "2"
