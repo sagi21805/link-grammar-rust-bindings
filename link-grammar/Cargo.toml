@@ -1,10 +1,14 @@
 [package]
 name = "link-grammar"
 description = "Safe Rust bindings to the link-grammar parser"
+readme = "README.md"
+categories = ["api-bindings", "text-processing"]
 version.workspace = true
 edition.workspace = true
+rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
+keywords.workspace = true
 
 [features]
 default = ["bundled"]
@@ -15,5 +19,5 @@ bundled = ["link-grammar-sys/bundled"]
 
 [dependencies]
 extend = "1"
-link-grammar-sys = { path = "../link-grammar-sys", default-features = false }
+link-grammar-sys = { path = "../link-grammar-sys", version = "0.1.0", default-features = false }
 thiserror = "2"
