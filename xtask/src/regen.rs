@@ -2,15 +2,16 @@
 //! `link-grammar-sys` commits, so its users need neither libclang nor
 //! flex.
 
-use std::env;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Stdio};
+use std::process::{Command, Stdio};
 
 use bindgen::{RustEdition, RustTarget};
 use serde_json::Value;
 use thiserror::Error;
+
+use crate::command_ext::{CommandError, CommandExt};
 
 /// The generated files of `link-grammar-sys`, and the sources they come
 /// from.
@@ -69,17 +70,12 @@ impl Regen {
     /// Builds `link-grammar-sys` and returns the directory its build
     /// script wrote `link-grammar/link-features.h` to.
     fn sys_include_dir(&self) -> Result<PathBuf, RegenError> {
-        let cargo = env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
-        let build = Command::new(cargo)
+        let build = Command::cargo()
             .current_dir(&self.workspace)
             .args(["build", "-p", "link-grammar-sys"])
             .arg("--message-format=json")
             .stderr(Stdio::inherit())
-            .output()
-            .map_err(RegenError::CargoMissing)?;
-        if !build.status.success() {
-            return Err(RegenError::SysBuild(build.status));
-        }
+            .output_checked()?;
         String::from_utf8_lossy(&build.stdout)
             .lines()
             .filter_map(|line| serde_json::from_str::<Value>(line).ok())
@@ -107,7 +103,7 @@ impl Regen {
                 source,
             }
         })?;
-        let status = Command::new("flex")
+        Command::new("flex")
             .current_dir(&self.workspace)
             .args([
                 "--noline",
@@ -116,22 +112,16 @@ impl Regen {
                 "link-grammar-sys/link-grammar/link-grammar/post-process/\
                  pp_lexer.l",
             ])
-            .status()
-            .map_err(RegenError::FlexMissing)?;
-        status
-            .success()
-            .then_some(())
-            .ok_or(RegenError::Flex(status))
+            .run_checked()
+            .map_err(RegenError::from)
     }
 }
 
 /// Why `cargo xtask regen` stopped.
 #[derive(Debug, Error)]
 pub enum RegenError {
-    #[error("can't run cargo: {0}")]
-    CargoMissing(#[source] io::Error),
-    #[error("building link-grammar-sys failed with {0}")]
-    SysBuild(ExitStatus),
+    #[error(transparent)]
+    Command(#[from] CommandError),
     #[error(
         "cargo didn't report where link-grammar-sys's build script wrote"
     )]
@@ -140,8 +130,4 @@ pub enum RegenError {
     Bindgen(#[from] bindgen::BindgenError),
     #[error("can't write {}: {source}", path.display())]
     Write { path: PathBuf, source: io::Error },
-    #[error("can't run flex, which must be on PATH: {0}")]
-    FlexMissing(#[source] io::Error),
-    #[error("flex failed with {0}")]
-    Flex(ExitStatus),
 }

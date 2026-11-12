@@ -47,6 +47,16 @@ flex installed.
 cargo xtask regen
 ```
 
+To check that the crate builds from the files it publishes, the way
+crates.io users get it, run:
+
+```sh
+cargo xtask package-check
+```
+
+It runs `cargo package`, unpacks the `.crate` under
+`target/package-check`, and parses a sentence with it.
+
 ## License
 
 LGPL-2.1, the same as link-grammar.

@@ -16,6 +16,8 @@ include = [
     "/link-grammar/link-grammar/**/*.c",
     "/link-grammar/link-grammar/**/*.h",
     "/link-grammar/link-grammar/link-features.h.in",
+    "!/link-grammar/link-grammar/minisat/**",
+    "!/link-grammar/link-grammar/malloc-dbg*.c",
     "/link-grammar/data/en/**",
 ]
 
