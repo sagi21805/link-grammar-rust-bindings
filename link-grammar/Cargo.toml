@@ -6,7 +6,14 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["bundled"]
+# Compiles link-grammar from the sources `link-grammar-sys` ships, with
+# the English dictionary. Without it, the build links a system install
+# found through pkg-config.
+bundled = ["link-grammar-sys/bundled"]
+
 [dependencies]
 extend = "1"
-link-grammar-sys = { path = "../link-grammar-sys" }
+link-grammar-sys = { path = "../link-grammar-sys", default-features = false }
 thiserror = "2"

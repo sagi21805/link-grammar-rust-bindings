@@ -1,4 +1,6 @@
+use std::cell::OnceCell;
 use std::ffi::CString;
+use std::iter;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -26,6 +28,11 @@ use crate::{Dictionary, Error, Linkage, ParseOptions, Result};
 /// ```
 pub struct Sentence<'d> {
     raw: NonNull<sys::Sentence_s>,
+    /// One cell per linkage the last parse kept, filled the first time
+    /// that linkage is asked for. Each `linkage_create` call allocates
+    /// the linkage's word list again and leaks the old one, so it runs
+    /// once per linkage.
+    linkages: Vec<OnceCell<NonNull<sys::Linkage_s>>>,
     dictionary: PhantomData<&'d Dictionary>,
 }
 
@@ -43,41 +50,82 @@ impl<'d> Sentence<'d> {
             .expect("sentence_create only fails when malloc does");
         Ok(Self {
             raw,
+            linkages: Vec::new(),
             dictionary: PhantomData,
         })
     }
 
     /// Splits the sentence into words and finds its linkages. Returns how
     /// many linkages have no post-processing violations.
+    ///
+    /// ```
+    /// use link_grammar::{Dictionary, ParseOptions, Sentence};
+    ///
+    /// let dictionary = Dictionary::new("en")?;
+    /// let options = ParseOptions::new();
+    /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
+    /// assert!(sentence.parse(&options)? > 0);
+    /// # Ok::<(), link_grammar::Error>(())
+    /// ```
     pub fn parse(&mut self, options: &ParseOptions) -> Result<usize> {
+        self.linkages.clear();
         // SAFETY: Both handles are live, and `&mut self` guarantees no
         // `Linkage` into the storage this frees is alive.
         let status = unsafe {
             sys::sentence_parse(self.as_raw(), options.as_raw())
         };
-        match status {
-            -1 => Err(Error::Split),
-            -2 => Err(Error::TooLong),
-            -3 => Err(Error::GenerationMode),
-            count => Ok(usize::try_from(count)
-                .expect("sentence_parse returns -1, -2, -3 or a count")),
-        }
+        let valid = match status {
+            -1 => return Err(Error::Split),
+            -2 => return Err(Error::TooLong),
+            -3 => return Err(Error::GenerationMode),
+            count => usize::try_from(count)
+                .expect("sentence_parse returns -1, -2, -3 or a count"),
+        };
+        // SAFETY: `raw` is a live sentence.
+        let kept = unsafe {
+            sys::sentence_num_linkages_post_processed(self.as_raw())
+        };
+        let kept = usize::try_from(kept)
+            .expect("a linkage count is never negative");
+        self.linkages =
+            iter::repeat_with(OnceCell::new).take(kept).collect();
+        Ok(valid)
     }
 
     /// The linkage at `index`, or `None` past the last one the parse
-    /// kept.
+    /// kept. `options` only matter the first time a linkage is asked for
+    /// after a parse.
+    ///
+    /// ```
+    /// use link_grammar::{Dictionary, ParseOptions, Sentence};
+    ///
+    /// let dictionary = Dictionary::new("en")?;
+    /// let options = ParseOptions::new();
+    /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
+    /// sentence.parse(&options)?;
+    /// assert!(sentence.linkage(0, &options).is_some());
+    /// assert!(sentence.linkage(usize::MAX, &options).is_none());
+    /// # Ok::<(), link_grammar::Error>(())
+    /// ```
     pub fn linkage(
         &self,
         index: usize,
         options: &ParseOptions,
     ) -> Option<Linkage<'_>> {
-        // SAFETY: Both handles are live. `linkage_create` checks `index`.
-        let raw = unsafe {
-            sys::linkage_create(index, self.as_raw(), options.as_raw())
-        };
-        // SAFETY: `raw` is null or a linkage of this sentence, and the
-        // returned `Linkage` borrows `self`.
-        NonNull::new(raw).map(|raw| unsafe { Linkage::from_raw(raw) })
+        let raw = *self.linkages.get(index)?.get_or_init(|| {
+            // SAFETY: Both handles are live, and `index` is below the
+            // number of linkages the parse kept.
+            let raw = unsafe {
+                sys::linkage_create(index, self.as_raw(), options.as_raw())
+            };
+            NonNull::new(raw).expect(
+                "linkage_create succeeds below the number of kept \
+                 linkages",
+            )
+        });
+        // SAFETY: `raw` is a linkage of this sentence, and the returned
+        // `Linkage` borrows `self`, so no reparse happens while it lives.
+        Some(unsafe { Linkage::from_raw(raw) })
     }
 
     /// Every linkage the parse kept, best first.

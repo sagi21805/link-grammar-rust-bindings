@@ -4,7 +4,7 @@
 //! and parsing the sentence with [`ParseOptions`] finds its [`Linkage`]s,
 //! each a set of labelled [`Link`]s between words.
 //!
-//! ```no_run
+//! ```
 //! use link_grammar::{Dictionary, ParseOptions, Sentence};
 //!
 //! let dictionary = Dictionary::new("en")?;

@@ -7,9 +7,10 @@ use link_grammar_sys as sys;
 use crate::c_str_ext::CStrPtr;
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
-/// the sentence, so it borrows the sentence.
+/// the sentence, so it borrows the sentence, and dropping it frees
+/// nothing.
 ///
-/// ```no_run
+/// ```
 /// # use link_grammar::{Dictionary, ParseOptions, Sentence};
 /// # let dictionary = Dictionary::new("en")?;
 /// # let options = ParseOptions::new();
@@ -41,8 +42,8 @@ impl<'s> Linkage<'s> {
     ///
     /// # Safety
     ///
-    /// `raw` is a linkage of a sentence that outlives `'s` and isn't
-    /// reparsed during it.
+    /// `raw` came from `linkage_create` for a sentence that outlives `'s`
+    /// and isn't reparsed during it.
     pub(crate) unsafe fn from_raw(raw: NonNull<sys::Linkage_s>) -> Self {
         Self {
             raw,
@@ -75,7 +76,7 @@ impl<'s> Linkage<'s> {
     pub fn diagram(&self, width: usize) -> String {
         // SAFETY: `raw` is a live linkage.
         let raw = unsafe {
-            sys::linkage_print_diagram(self.as_raw(), true, width)
+            sys::linkage_print_diagram(self.as_raw(), false, width)
         };
         // SAFETY: `linkage_print_diagram` returns a NUL-terminated string.
         let diagram = unsafe { CStr::from_ptr(raw) }
@@ -103,11 +104,4 @@ impl<'s> Linkage<'s> {
 
     /// The handle the C API takes.
     fn as_raw(&self) -> sys::Linkage { self.raw.as_ptr() }
-}
-
-impl Drop for Linkage<'_> {
-    fn drop(&mut self) {
-        // SAFETY: `raw` came from `linkage_create` and is deleted once.
-        unsafe { sys::linkage_delete(self.raw.as_ptr()) };
-    }
 }

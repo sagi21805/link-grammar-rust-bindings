@@ -5,7 +5,7 @@ use link_grammar_sys as sys;
 /// Settings that control how [`Sentence::parse`](crate::Sentence::parse)
 /// searches for linkages.
 ///
-/// ```no_run
+/// ```
 /// use link_grammar::ParseOptions;
 ///
 /// let mut options = ParseOptions::new();
