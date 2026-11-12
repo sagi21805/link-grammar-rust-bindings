@@ -1,7 +1,5 @@
 //! Repository tasks, run as `cargo xtask <task>`.
 
-#[path = "../../link-grammar-sys/build/link_features.rs"]
-mod link_features;
 mod regen;
 
 use std::env;

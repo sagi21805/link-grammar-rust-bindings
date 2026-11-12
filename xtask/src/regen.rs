@@ -6,12 +6,11 @@ use std::env;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
+use std::process::{Command, ExitStatus, Stdio};
 
 use bindgen::{RustEdition, RustTarget};
+use serde_json::Value;
 use thiserror::Error;
-
-use crate::link_features::LinkFeatures;
 
 /// The generated files of `link-grammar-sys`, and the sources they come
 /// from.
@@ -40,13 +39,9 @@ impl Regen {
     /// `libc` instead of the libc headers' internals, and there are no
     /// layout tests with 64-bit sizes.
     fn bindings(&self) -> Result<(), RegenError> {
+        let include_dir = self.sys_include_dir()?;
         let sys = self.workspace.join("link-grammar-sys");
         let source_root = sys.join("link-grammar");
-        let include_dir = self.workspace.join("target/xtask/include");
-        LinkFeatures::new(&source_root, env::consts::OS, "")
-            .and_then(|features| features.write_to(&include_dir))
-            .map_err(RegenError::LinkFeatures)?;
-
         let output = sys.join("src/bindings.rs");
         bindgen::Builder::default()
             .header(sys.join("wrapper.h").display().to_string())
@@ -69,6 +64,36 @@ impl Regen {
             .generate()?
             .write_to_file(&output)
             .map_err(|source| RegenError::Write { path: output, source })
+    }
+
+    /// Builds `link-grammar-sys` and returns the directory its build
+    /// script wrote `link-grammar/link-features.h` to.
+    fn sys_include_dir(&self) -> Result<PathBuf, RegenError> {
+        let cargo = env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+        let build = Command::new(cargo)
+            .current_dir(&self.workspace)
+            .args(["build", "-p", "link-grammar-sys"])
+            .arg("--message-format=json")
+            .stderr(Stdio::inherit())
+            .output()
+            .map_err(RegenError::CargoMissing)?;
+        if !build.status.success() {
+            return Err(RegenError::SysBuild(build.status));
+        }
+        String::from_utf8_lossy(&build.stdout)
+            .lines()
+            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+            .find(|message| {
+                message["reason"] == "build-script-executed"
+                    && message["package_id"]
+                        .as_str()
+                        .is_some_and(|id| id.contains("link-grammar-sys"))
+            })
+            .and_then(|message| {
+                message["out_dir"].as_str().map(PathBuf::from)
+            })
+            .map(|out_dir| out_dir.join("include"))
+            .ok_or(RegenError::NoBuildScriptOutput)
     }
 
     /// Runs flex over the post-processing lexer. The paths are relative
@@ -103,8 +128,14 @@ impl Regen {
 /// Why `cargo xtask regen` stopped.
 #[derive(Debug, Error)]
 pub enum RegenError {
-    #[error("can't write link-features.h: {0}")]
-    LinkFeatures(#[source] io::Error),
+    #[error("can't run cargo: {0}")]
+    CargoMissing(#[source] io::Error),
+    #[error("building link-grammar-sys failed with {0}")]
+    SysBuild(ExitStatus),
+    #[error(
+        "cargo didn't report where link-grammar-sys's build script wrote"
+    )]
+    NoBuildScriptOutput,
     #[error("bindgen can't parse link-includes.h: {0}")]
     Bindgen(#[from] bindgen::BindgenError),
     #[error("can't write {}: {source}", path.display())]
