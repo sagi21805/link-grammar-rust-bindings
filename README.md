@@ -28,7 +28,7 @@ link-grammar = { version = "0.1", default-features = false }
 ## Contributing
 
 The upstream sources are a git submodule in
-`crates/link-grammar-sys/link-grammar`, pinned to the
+`link-grammar-sys/link-grammar`, pinned to the
 `link-grammar-5.13.2` tag. Fetch it after cloning:
 
 ```sh
