@@ -6,10 +6,10 @@
 
 use std::io::{self, BufRead};
 
-use link_grammar::{Dictionary, ParseOptions, Sentence};
+use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let dictionary = Dictionary::new("en")?;
+    let dictionary = Dictionary::new(Language::English)?;
     let options = ParseOptions::new();
     for line in io::stdin().lock().lines() {
         let mut sentence = Sentence::new(&dictionary, &line?)?;

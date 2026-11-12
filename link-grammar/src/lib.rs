@@ -2,12 +2,13 @@
 //!
 //! A [`Dictionary`] holds a language's grammar. A [`Sentence`] borrows it,
 //! and parsing the sentence with [`ParseOptions`] finds its [`Linkage`]s,
-//! each a set of labelled [`Link`]s between words.
+//! each a set of [`Link`]s between words. A link's [`LinkLabel`] splits
+//! into a [`LinkType`] and a [`Subscript`].
 //!
 //! ```
-//! use link_grammar::{Dictionary, ParseOptions, Sentence};
+//! use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
 //!
-//! let dictionary = Dictionary::new("en")?;
+//! let dictionary = Dictionary::new(Language::English)?;
 //! let options = ParseOptions::new();
 //! let mut sentence = Sentence::new(&dictionary, "The lander landed.")?;
 //! sentence.parse(&options)?;
@@ -22,12 +23,16 @@
 mod c_str_ext;
 mod dictionary;
 mod error;
+mod language;
+mod link_label;
 mod linkage;
 mod parse_options;
 mod sentence;
 
 pub use dictionary::Dictionary;
 pub use error::{Error, Result};
+pub use language::Language;
+pub use link_label::{LinkLabel, LinkType, Subscript};
 pub use linkage::{Link, Linkage};
 pub use parse_options::ParseOptions;
 pub use sentence::Sentence;

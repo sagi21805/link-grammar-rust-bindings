@@ -1,11 +1,11 @@
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::path::Path;
 use std::ptr::NonNull;
 use std::sync::Mutex;
 
 use link_grammar_sys as sys;
 
-use crate::{Error, Result};
+use crate::{Error, Language, Result};
 
 /// The grammar and word list of one language.
 ///
@@ -15,10 +15,10 @@ use crate::{Error, Result};
 /// ```no_run
 /// use std::path::Path;
 ///
-/// use link_grammar::Dictionary;
+/// use link_grammar::{Dictionary, Language};
 ///
 /// Dictionary::set_data_dir(Path::new("link-grammar/data"))?;
-/// let english = Dictionary::new("en")?;
+/// let russian = Dictionary::new(Language::Russian)?;
 /// # Ok::<(), link_grammar::Error>(())
 /// ```
 // TODO: Upstream allows sharing one dictionary between threads. Add
@@ -28,20 +28,44 @@ pub struct Dictionary {
 }
 
 impl Dictionary {
-    /// Loads the dictionary for `lang` (such as `"en"` or `"ru"`), or one
-    /// at the path `lang` names.
+    /// Loads the dictionary for `language`.
     ///
     /// link-grammar searches the directory given to
-    /// [`set_data_dir`](Self::set_data_dir), then its install directory,
-    /// then `./data`.
-    pub fn new(lang: &str) -> Result<Self> {
-        let c_lang = CString::new(lang)?;
+    /// [`set_data_dir`](Self::set_data_dir), then the dictionaries this
+    /// crate ships, then `./data`.
+    pub fn new(language: Language) -> Result<Self> {
+        Self::create(language.c_code(), || language.code().to_owned())
+    }
+
+    /// Loads the dictionary in the directory `path`, which holds
+    /// `4.0.dict` and the files it includes.
+    ///
+    /// ```no_run
+    /// use std::path::Path;
+    ///
+    /// use link_grammar::Dictionary;
+    ///
+    /// let custom = Dictionary::from_path(Path::new("my-dictionaries/en"))?;
+    /// # Ok::<(), link_grammar::Error>(())
+    /// ```
+    pub fn from_path(path: &Path) -> Result<Self> {
+        let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
+        Self::create(&c_path, || path.display().to_string())
+    }
+
+    /// Loads the dictionary that `dictionary_create_lang` finds for
+    /// `name`, a language code or a path. `describe` names it in the
+    /// error.
+    fn create(
+        name: &CStr,
+        describe: impl FnOnce() -> String,
+    ) -> Result<Self> {
         let _guard = DATA_DIR_LOCK.lock().expect("no panic while locked");
-        // SAFETY: `c_lang` is NUL-terminated and outlives the call.
-        let raw = unsafe { sys::dictionary_create_lang(c_lang.as_ptr()) };
+        // SAFETY: `name` is NUL-terminated and outlives the call.
+        let raw = unsafe { sys::dictionary_create_lang(name.as_ptr()) };
         NonNull::new(raw)
             .map(|raw| Self { raw })
-            .ok_or_else(|| Error::DictionaryNotFound(lang.to_owned()))
+            .ok_or_else(|| Error::DictionaryNotFound(describe()))
     }
 
     /// Makes later [`new`](Self::new) calls look in `path` first. `path`

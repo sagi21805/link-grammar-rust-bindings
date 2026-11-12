@@ -4,6 +4,7 @@ use std::ptr::NonNull;
 
 use link_grammar_sys as sys;
 
+use crate::LinkLabel;
 use crate::c_str_ext::CStrPtr;
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
@@ -11,8 +12,8 @@ use crate::c_str_ext::CStrPtr;
 /// nothing.
 ///
 /// ```
-/// # use link_grammar::{Dictionary, ParseOptions, Sentence};
-/// # let dictionary = Dictionary::new("en")?;
+/// # use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
+/// # let dictionary = Dictionary::new(Language::English)?;
 /// # let options = ParseOptions::new();
 /// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
 /// sentence.parse(&options)?;
@@ -34,7 +35,7 @@ pub struct Linkage<'s> {
 pub struct Link<'l> {
     pub left: usize,
     pub right: usize,
-    pub label: &'l str,
+    pub label: LinkLabel<'l>,
 }
 
 impl<'s> Linkage<'s> {
@@ -97,7 +98,9 @@ impl<'s> Linkage<'s> {
             Link {
                 left: sys::linkage_get_link_lword(raw, index),
                 right: sys::linkage_get_link_rword(raw, index),
-                label: sys::linkage_get_link_label(raw, index).as_utf8(),
+                label: LinkLabel::new(
+                    sys::linkage_get_link_label(raw, index).as_utf8(),
+                ),
             }
         }
     }

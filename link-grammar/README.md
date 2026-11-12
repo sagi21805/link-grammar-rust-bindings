@@ -5,10 +5,10 @@ the CMU/OpenCog parser that links the words of a sentence with labelled
 grammatical relations.
 
 ```rust
-use link_grammar::{Dictionary, ParseOptions, Sentence};
+use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
 
 fn main() -> link_grammar::Result<()> {
-    let dictionary = Dictionary::new("en")?;
+    let dictionary = Dictionary::new(Language::English)?;
     let options = ParseOptions::new();
     let mut sentence =
         Sentence::new(&dictionary, "The lander touched down on Mars.")?;
@@ -43,8 +43,15 @@ turn off `bundled`:
 link-grammar = { version = "0.1", default-features = false }
 ```
 
-Other languages load from a dictionary tree that you point
-`Dictionary::set_data_dir` at.
+`Language` lists the languages link-grammar has dictionaries for. Only
+English ships with the crate, so point `Dictionary::set_data_dir` at
+link-grammar's `data/` directory for the others, or load any dictionary
+directory with `Dictionary::from_path`.
+
+Each `Link` carries a `LinkLabel`, such as `MVp`, which splits into a
+`LinkType` (`MV`) and a `Subscript` (`p`). They borrow the linkage's
+string, so they cost no more than a `&str`, but only a parse can make
+one.
 
 ## License
 

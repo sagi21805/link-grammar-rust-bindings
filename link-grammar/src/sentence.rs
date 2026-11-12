@@ -15,8 +15,8 @@ use crate::{Dictionary, Error, Linkage, ParseOptions, Result};
 /// code that keeps a [`Linkage`] across a reparse.
 ///
 /// ```compile_fail,E0502
-/// # use link_grammar::{Dictionary, ParseOptions, Sentence};
-/// # let dictionary = Dictionary::new("en")?;
+/// # use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
+/// # let dictionary = Dictionary::new(Language::English)?;
 /// # let options = ParseOptions::new();
 /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
 /// sentence.parse(&options)?;
@@ -59,9 +59,9 @@ impl<'d> Sentence<'d> {
     /// many linkages have no post-processing violations.
     ///
     /// ```
-    /// use link_grammar::{Dictionary, ParseOptions, Sentence};
+    /// use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
     ///
-    /// let dictionary = Dictionary::new("en")?;
+    /// let dictionary = Dictionary::new(Language::English)?;
     /// let options = ParseOptions::new();
     /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
     /// assert!(sentence.parse(&options)? > 0);
@@ -97,9 +97,9 @@ impl<'d> Sentence<'d> {
     /// after a parse.
     ///
     /// ```
-    /// use link_grammar::{Dictionary, ParseOptions, Sentence};
+    /// use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
     ///
-    /// let dictionary = Dictionary::new("en")?;
+    /// let dictionary = Dictionary::new(Language::English)?;
     /// let options = ParseOptions::new();
     /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
     /// sentence.parse(&options)?;
