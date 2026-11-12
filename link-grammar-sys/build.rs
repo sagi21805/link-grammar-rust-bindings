@@ -4,7 +4,6 @@ use std::path::PathBuf;
 fn main() {
     let source = LinkGrammarSource::locate();
     source.link();
-    source.generate_bindings();
 }
 
 /// A link-grammar source tree that `configure && make` already built.
@@ -55,26 +54,4 @@ impl LinkGrammarSource {
         println!("cargo:rustc-link-lib=dylib={cpp}");
     }
 
-    /// Runs bindgen over the public API in `link-includes.h`.
-    fn generate_bindings(&self) {
-        println!("cargo:rerun-if-changed=wrapper.h");
-        let out_dir = PathBuf::from(
-            env::var_os("OUT_DIR").expect("cargo sets OUT_DIR"),
-        );
-        bindgen::Builder::default()
-            .header("wrapper.h")
-            .clang_arg(format!("-I{}", self.root.display()))
-            .rust_edition(bindgen::RustEdition::Edition2024)
-            .allowlist_function(
-                "(linkgrammar|lg_error|dictionary|parse_options|sentence|\
-                 linkage)_.*",
-            )
-            .allowlist_type("Cost_Model_type|ConstituentDisplayStyle")
-            .opaque_type("(Dictionary|Parse_Options|Sentence|Linkage)_s")
-            .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
-            .generate()
-            .expect("bindgen can parse link-includes.h")
-            .write_to_file(out_dir.join("bindings.rs"))
-            .expect("OUT_DIR is writable");
-    }
 }
