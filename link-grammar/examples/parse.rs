@@ -6,9 +6,12 @@
 
 use std::io::{self, BufRead};
 
-use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
+use link_grammar::{
+    Dictionary, Language, ParseOptions, Sentence, Verbosity,
+};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    link_grammar::set_verbosity(Verbosity::Silent);
     let dictionary = Dictionary::new(Language::English)?;
     let options = ParseOptions::new();
     for line in io::stdin().lock().lines() {

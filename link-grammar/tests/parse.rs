@@ -1,7 +1,9 @@
 //! Parses with the bundled English dictionary and checks the result
 //! against `link-parser en`.
 
-use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
+use link_grammar::{
+    Dictionary, Language, ParseOptions, Sentence, WordGuess,
+};
 
 #[test]
 fn parse_finds_link_parsers_linkages() -> link_grammar::Result<()> {
@@ -76,5 +78,66 @@ fn from_path_loads_the_bundled_english() -> link_grammar::Result<()> {
     let options = ParseOptions::new();
     let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
     assert!(sentence.parse(&options)? > 0);
+    Ok(())
+}
+
+#[test]
+fn words_split_into_text_guess_and_subscript() -> link_grammar::Result<()>
+{
+    let dictionary = Dictionary::new(Language::English)?;
+    let options = ParseOptions::new();
+    let mut sentence = Sentence::new(
+        &dictionary,
+        "Mr. Smith bought 123 widgets in the U.S. yesterday.",
+    )?;
+    sentence.parse(&options)?;
+
+    let first = sentence.linkage(0, &options).expect("a first linkage");
+    let words: Vec<_> = first
+        .words()
+        .map(|word| (word.text(), word.guess(), word.subscript()))
+        .collect();
+    for word in [
+        ("LEFT-WALL", None, None),
+        ("Mr.", None, Some("x")),
+        ("bought", None, Some("v-d")),
+        ("123", Some(WordGuess::Regex), None),
+        ("widgets", Some(WordGuess::Regex), Some("n")),
+        ("U.S.", Some(WordGuess::Regex), None),
+        ("the", None, None),
+    ] {
+        assert!(
+            words.contains(&word),
+            "{word:?} is missing from {words:?}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn null_parses_mark_unlinked_words() -> link_grammar::Result<()> {
+    let dictionary = Dictionary::new(Language::English)?;
+    let mut options = ParseOptions::new();
+    options.set_max_null_count(1);
+    let mut sentence = Sentence::new(
+        &dictionary,
+        "The the lander touched down on Mars.",
+    )?;
+    sentence.parse(&options)?;
+
+    assert_eq!(sentence.null_count(), 1);
+    let first = sentence.linkage(0, &options).expect("a first linkage");
+    let unlinked: Vec<_> = first
+        .words()
+        .filter(|word| word.is_unlinked())
+        .map(|word| word.text())
+        .collect();
+    assert_eq!(unlinked, ["the"]);
+    let lander = first
+        .words()
+        .find(|word| word.text() == "lander")
+        .expect("lander is a word");
+    assert_eq!(lander.guess(), Some(WordGuess::Unknown));
+    assert_eq!(lander.subscript(), Some("n"));
     Ok(())
 }

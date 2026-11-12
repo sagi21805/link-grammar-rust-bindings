@@ -20,6 +20,9 @@
 //!
 //! [link-grammar]: https://github.com/opencog/link-grammar
 
+#[macro_use]
+mod macros;
+
 mod c_str_ext;
 mod dictionary;
 mod error;
@@ -28,6 +31,8 @@ mod link_label;
 mod linkage;
 mod parse_options;
 mod sentence;
+mod verbosity;
+mod word;
 
 pub use dictionary::Dictionary;
 pub use error::{Error, Result};
@@ -36,3 +41,5 @@ pub use link_label::{LinkLabel, LinkType, Subscript};
 pub use linkage::{Link, Linkage};
 pub use parse_options::ParseOptions;
 pub use sentence::Sentence;
+pub use verbosity::{Verbosity, set_verbosity};
+pub use word::{Word, WordGuess};

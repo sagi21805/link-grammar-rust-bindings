@@ -69,6 +69,7 @@ impl<'d> Sentence<'d> {
     /// ```
     pub fn parse(&mut self, options: &ParseOptions) -> Result<usize> {
         self.linkages.clear();
+        options.sync_verbosity();
         // SAFETY: Both handles are live, and `&mut self` guarantees no
         // `Linkage` into the storage this frees is alive.
         let status = unsafe {

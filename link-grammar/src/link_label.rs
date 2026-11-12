@@ -1,5 +1,3 @@
-use std::fmt;
-
 /// A link's label, such as `MVp`, which is the [`LinkType`] `MV` followed
 /// by the [`Subscript`] `p`.
 ///
@@ -75,40 +73,7 @@ impl<'l> LinkLabel<'l> {
     }
 }
 
-/// `as_str`, `Display` and comparisons with strings for the borrowed
-/// string types of this module.
-macro_rules! label_str {
-    ($($ty:ident),*) => {$(
-        impl<'l> $ty<'l> {
-            #[doc = concat!("The ", stringify!($ty), " as a string.")]
-            pub fn as_str(self) -> &'l str { self.0 }
-        }
-
-        impl fmt::Display for $ty<'_> {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.write_str(self.0)
-            }
-        }
-
-        impl PartialEq<str> for $ty<'_> {
-            fn eq(&self, other: &str) -> bool { self.0 == other }
-        }
-
-        impl PartialEq<&str> for $ty<'_> {
-            fn eq(&self, other: &&str) -> bool { self.0 == *other }
-        }
-    )*};
-}
-
-label_str!(LinkLabel, LinkType, Subscript);
-
-// The label types are a `&str` and nothing more.
-const _: () = {
-    use std::mem::size_of;
-    assert!(size_of::<LinkLabel<'_>>() == size_of::<&str>());
-    assert!(size_of::<LinkType<'_>>() == size_of::<&str>());
-    assert!(size_of::<Subscript<'_>>() == size_of::<&str>());
-};
+borrowed_str!(LinkLabel, LinkType, Subscript);
 
 /// Whether `c` belongs in a link type.
 fn is_link_type_char(c: char) -> bool {

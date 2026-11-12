@@ -4,8 +4,8 @@ use std::ptr::NonNull;
 
 use link_grammar_sys as sys;
 
-use crate::LinkLabel;
 use crate::c_str_ext::CStrPtr;
+use crate::{LinkLabel, Word};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
@@ -18,7 +18,7 @@ use crate::c_str_ext::CStrPtr;
 /// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
 /// sentence.parse(&options)?;
 /// let linkage = sentence.linkage(0, &options).expect("a parse");
-/// let words: Vec<&str> = linkage.words().collect();
+/// let words: Vec<_> = linkage.words().collect();
 /// for link in linkage.links() {
 ///     println!("{} -{}- {}", words[link.left], link.label, words[link.right]);
 /// }
@@ -52,17 +52,16 @@ impl<'s> Linkage<'s> {
         }
     }
 
-    /// The words of the linkage, left wall first, each with the
-    /// dictionary subscript it matched (`"touched.v-d"`).
-    pub fn words(&self) -> impl ExactSizeIterator<Item = &str> {
+    /// The words of the linkage, left wall first.
+    pub fn words(&self) -> impl ExactSizeIterator<Item = Word<'_>> {
         // SAFETY: `raw` is a live linkage.
         let count = unsafe { sys::linkage_get_num_words(self.as_raw()) };
         (0..count).map(|index| {
             // SAFETY: `index` is below the word count, and the word lives
             // as long as the linkage.
-            unsafe {
+            Word::new(unsafe {
                 sys::linkage_get_word(self.as_raw(), index).as_utf8()
-            }
+            })
         })
     }
 
