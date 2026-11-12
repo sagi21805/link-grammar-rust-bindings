@@ -25,6 +25,9 @@ To link against a link-grammar you installed yourself, turn off the
 link-grammar = { version = "0.1", default-features = false }
 ```
 
+The bundled build supports Linux with glibc for now. On other targets,
+install link-grammar and turn off `bundled`.
+
 ## Contributing
 
 The upstream sources are a git submodule in
@@ -35,6 +38,22 @@ The upstream sources are a git submodule in
 git submodule update --init
 ```
 
+`link-grammar-sys` commits `src/bindings.rs` from bindgen and
+`generated/pp_lexer.c` from flex, so users need neither libclang nor flex.
+After moving the submodule to a new tag, regenerate both with libclang and
+flex installed.
+
+```sh
+cargo xtask regen
+```
+
 ## License
 
 LGPL-2.1, the same as link-grammar.
+
+The `bundled` build links link-grammar statically into your program. The
+LGPL then requires that the people you distribute the program to can
+relink it against a modified link-grammar. You can do that by shipping
+your object files or your source code, or by turning off `bundled` and
+linking the system's shared library instead. Read the LGPL's section 6
+before you distribute a statically linked binary.

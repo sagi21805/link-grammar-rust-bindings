@@ -1,13 +1,16 @@
 //! Renders `link-features.h` from `link-features.h.in` with the values
-//! configure would fill in. The build script and `cargo xtask regen` both
-//! use it.
+//! configure would fill in.
 
 use std::path::Path;
 use std::{fs, io};
 
-/// The link-grammar release the submodule is pinned to, as
-/// `[major, minor, micro]`.
-pub const VERSION: [&str; 3] = ["5", "13", "2"];
+/// The placeholders configure fills in with the release number, which
+/// `configure.ac` assigns as `NAME=value`.
+const VERSION_NAMES: [&str; 3] = [
+    "LINK_MAJOR_VERSION",
+    "LINK_MINOR_VERSION",
+    "LINK_MICRO_VERSION",
+];
 
 /// The placeholders whose values are the same in every build.
 const FIXED_VALUES: [(&str, &str); 7] = [
@@ -40,7 +43,8 @@ pub struct LinkFeatures {
 
 impl LinkFeatures {
     /// Fills in the template from the link-grammar sources at
-    /// `source_root`. `host_os` and `defs` only show up in the string
+    /// `source_root`, with the version from its `configure.ac`.
+    /// `host_os` and `defs` only show up in the string
     /// `linkgrammar_get_configuration()` returns.
     pub fn new(
         source_root: &Path,
@@ -50,16 +54,16 @@ impl LinkFeatures {
         let template = fs::read_to_string(
             source_root.join("link-grammar/link-features.h.in"),
         )?;
-        let [major, minor, micro] = VERSION;
+        let configure_ac =
+            fs::read_to_string(source_root.join("configure.ac"))?;
+        let version = configure_ac
+            .lines()
+            .filter_map(|line| line.split_once('='))
+            .filter(|(name, _)| VERSION_NAMES.contains(name));
         let header = FIXED_VALUES
             .into_iter()
-            .chain([
-                ("LINK_MAJOR_VERSION", major),
-                ("LINK_MINOR_VERSION", minor),
-                ("LINK_MICRO_VERSION", micro),
-                ("HOST_OS", host_os),
-                ("LG_DEFS", defs),
-            ])
+            .chain(version)
+            .chain([("HOST_OS", host_os), ("LG_DEFS", defs)])
             .fold(template, |header, (name, value)| {
                 header.replace(&format!("@{name}@"), value)
             });
