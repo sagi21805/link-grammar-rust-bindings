@@ -6,7 +6,7 @@ use std::ptr::NonNull;
 use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
-use crate::{LinkLabel, Word};
+use crate::{Language, LinkLabel, Word};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
@@ -26,6 +26,8 @@ use crate::{LinkLabel, Word};
 /// ```
 pub struct Linkage<'s> {
     raw: NonNull<sys::Linkage_s>,
+    /// The language of the sentence's dictionary.
+    language: Option<Language>,
     sentence: PhantomData<&'s ()>,
 }
 
@@ -39,15 +41,20 @@ pub struct Link<'l> {
 }
 
 impl<'s> Linkage<'s> {
-    /// Wraps a handle from `linkage_create`.
+    /// Wraps a handle from `linkage_create` for a sentence parsed with a
+    /// dictionary of `language`.
     ///
     /// # Safety
     ///
     /// `raw` came from `linkage_create` for a sentence that outlives `'s`
     /// and isn't reparsed during it.
-    pub(crate) unsafe fn from_raw(raw: NonNull<sys::Linkage_s>) -> Self {
+    pub(crate) unsafe fn from_raw(
+        raw: NonNull<sys::Linkage_s>,
+        language: Option<Language>,
+    ) -> Self {
         Self {
             raw,
+            language,
             sentence: PhantomData,
         }
     }
@@ -59,9 +66,12 @@ impl<'s> Linkage<'s> {
         (0..count).map(|index| {
             // SAFETY: `index` is below the word count, and the word lives
             // as long as the linkage.
-            Word::new(unsafe {
-                sys::linkage_get_word(self.as_raw(), index).as_utf8()
-            })
+            Word::new(
+                unsafe {
+                    sys::linkage_get_word(self.as_raw(), index).as_utf8()
+                },
+                self.language,
+            )
         })
     }
 
@@ -91,6 +101,7 @@ impl<'s> Linkage<'s> {
                 right: sys::linkage_get_link_rword(raw, index),
                 label: LinkLabel::new(
                     sys::linkage_get_link_label(raw, index).as_utf8(),
+                    self.language,
                 ),
             }
         }
