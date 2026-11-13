@@ -11,7 +11,7 @@ The default `bundled` feature compiles link-grammar 5.13.2 from the
 sources this crate ships and links it statically. The English dictionary
 ships too, and the library finds it with no setup. You need only a C
 compiler, because the bindings and the post-processing lexer come
-pre-generated. The bundled build supports Linux with glibc for now.
+pre-generated. The bundled build supports Linux with glibc and macOS for now.
 
 Without `bundled`, the build finds a system install through pkg-config
 and links that.

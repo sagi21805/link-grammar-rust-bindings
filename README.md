@@ -25,8 +25,8 @@ To link against a link-grammar you installed yourself, turn off the
 link-grammar = { version = "0.1", default-features = false }
 ```
 
-The bundled build supports Linux with glibc for now. On other targets,
-install link-grammar and turn off `bundled`.
+The bundled build supports Linux with glibc and macOS for now. On other
+targets, install link-grammar and turn off `bundled`.
 
 ## Contributing
 

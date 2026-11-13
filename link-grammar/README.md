@@ -32,7 +32,7 @@ LEFT-WALL the lander[?].n touched.v-d down.r on Mars.m .
 
 The default `bundled` feature compiles link-grammar 5.13.2 from the
 sources that `link-grammar-sys` ships, along with the English dictionary,
-so you need only a C compiler. It supports Linux with glibc for now.
+so you need only a C compiler. It supports Linux with glibc and macOS for now.
 
 To link a link-grammar you installed yourself, which pkg-config must find,
 turn off `bundled`:

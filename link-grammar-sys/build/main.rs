@@ -173,6 +173,7 @@ impl LinkGrammarBuild {
 /// A target whose configure results the bundled build knows.
 enum Target {
     LinuxGnu,
+    MacOs,
 }
 
 impl Target {
@@ -183,6 +184,7 @@ impl Target {
             .expect("cargo sets CARGO_CFG_TARGET_ENV");
         match (os.as_str(), libc.as_str()) {
             ("linux", "gnu") => Self::LinuxGnu,
+            ("macos", _) => Self::MacOs,
             _ => panic!(
                 "The bundled link-grammar build doesn't support the \
                  {os}-{libc} target yet. Install link-grammar and turn \
@@ -193,40 +195,44 @@ impl Target {
     }
 
     /// The OS name configure reports in
-    /// `linkgrammar_get_configuration()`.
+    /// `linkgrammar_get_configuration()`, without the Darwin version
+    /// that configure appends on macOS.
     fn host_os(&self) -> &'static str {
         match self {
             Self::LinuxGnu => "linux-gnu",
+            Self::MacOs => "darwin",
         }
     }
 
     /// The defines configure finds on this target, with the optional
     /// libraries turned off.
-    fn defines(&self) -> &'static [(&'static str, &'static str)] {
-        match self {
+    fn defines(
+        &self,
+    ) -> impl Iterator<Item = &'static (&'static str, &'static str)> {
+        let own = match self {
             Self::LinuxGnu => LINUX_GNU_DEFINES,
-        }
+            Self::MacOs => MACOS_DEFINES,
+        };
+        UNIX_DEFINES.iter().chain(own)
     }
 
     /// `defines` as configure's `LG_DEFS`, the `-DNAME=VALUE` list that
     /// `linkgrammar_get_configuration()` reports.
     fn lg_defs(&self) -> String {
         self.defines()
-            .iter()
             .map(|(name, value)| format!("-D{name}={value}"))
             .collect::<Vec<_>>()
             .join(" ")
     }
 }
 
-/// What configure finds on glibc Linux, minus the macros no compiled
-/// source reads. Regex comes from libc's `<regex.h>`.
-const LINUX_GNU_DEFINES: &[(&str, &str)] = &[
+/// What configure finds on every supported target, minus the macros no
+/// compiled source reads. Regex comes from libc's `<regex.h>`.
+const UNIX_DEFINES: &[(&str, &str)] = &[
     ("_DEFAULT_SOURCE", "1"),
     ("_GNU_SOURCE", "1"),
     ("TLS", "_Thread_local"),
     ("HAVE_REGEX_H", "1"),
-    ("HAVE_LOCALE_T_IN_LOCALE_H", "1"),
     ("HAVE_ALLOCA_H", "1"),
     ("HAVE_ALIGNED_ALLOC", "1"),
     ("HAVE___BUILTIN_TYPES_COMPATIBLE_P", "1"),
@@ -235,9 +241,21 @@ const LINUX_GNU_DEFINES: &[(&str, &str)] = &[
     ("HAVE_STRNDUP", "1"),
     ("HAVE_STRTOK_R", "1"),
     ("HAVE_STRERROR_R", "1"),
+];
+
+/// What glibc Linux adds, which is `locale_t` in `<locale.h>`, the GNU
+/// `strerror_r` that returns a `char *`, and `malloc_trim`.
+const LINUX_GNU_DEFINES: &[(&str, &str)] = &[
+    ("HAVE_LOCALE_T_IN_LOCALE_H", "1"),
     ("STRERROR_R_CHAR_P", "1"),
     ("HAVE_MALLOC_TRIM", "1"),
 ];
+
+/// What macOS needs for `locale_t`. configure finds it in `<locale.h>`,
+/// but `iswspace_l` and the other `isw*_l` functions are declared only
+/// in `<xlocale.h>`, so the sources must include that header.
+const MACOS_DEFINES: &[(&str, &str)] =
+    &[("HAVE_LOCALE_T_IN_XLOCALE_H", "1"), ("HAVE_XLOCALE_H", "1")];
 
 /// The path in the environment variable `name`, which cargo sets.
 fn env_path(name: &str) -> PathBuf {

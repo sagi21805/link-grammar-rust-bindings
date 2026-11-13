@@ -21,8 +21,8 @@ jobs:
   bundled:
     strategy:
       matrix:
-        # Steps 7 and 8 of the plan add macos-latest and windows-latest.
-        os: [ubuntu-latest]
+        # Step 8 of the plan adds windows-latest.
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -37,12 +37,18 @@ jobs:
       - run: cargo xtask package-check
 
   system:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: sudo apt-get update && sudo apt-get install -y liblink-grammar-dev pkg-config
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y liblink-grammar-dev pkg-config
+      - if: runner.os == 'macOS'
+        run: brew install link-grammar pkgconf
       - run: pkg-config --modversion link-grammar
       # The distribution's link-grammar may be older than the submodule,
       # so its dictionary can find a different number of linkages than
