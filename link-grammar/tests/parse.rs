@@ -2,7 +2,8 @@
 //! against `link-parser en`.
 
 use link_grammar::{
-    Dictionary, Language, ParseOptions, Sentence, WordGuess,
+    Dictionary, Language, ParseOptions, PartOfSpeech, Relation, Sentence,
+    WordGuess,
 };
 
 #[test]
@@ -72,6 +73,7 @@ fn from_path_loads_the_bundled_english() -> link_grammar::Result<()> {
     let path = std::path::Path::new(link_grammar_sys::BUNDLED_DATA_DIR)
         .join("en");
     let dictionary = Dictionary::from_path(&path)?;
+    assert_eq!(dictionary.language(), Some(Language::English));
     let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
     assert!(sentence.parse()? > 0);
     Ok(())
@@ -134,5 +136,52 @@ fn null_parses_mark_unlinked_words() -> link_grammar::Result<()> {
         .expect("lander is a word");
     assert_eq!(lander.guess(), Some(WordGuess::Unknown));
     assert_eq!(lander.subscript(), Some("n"));
+    Ok(())
+}
+
+#[test]
+fn english_words_and_links_have_types() -> link_grammar::Result<()> {
+    let dictionary = Dictionary::new(Language::English)?;
+    let mut sentence = Sentence::new(
+        &dictionary,
+        "The happy dogs quickly ate red apples and slept.",
+    )?;
+    sentence.parse()?;
+
+    let first = sentence.linkage(0).expect("a first linkage");
+    let words: Vec<_> = first
+        .words()
+        .map(|word| (word.text(), word.part_of_speech()))
+        .collect();
+    for word in [
+        ("the", None),
+        ("happy", Some(PartOfSpeech::Adjective)),
+        ("dogs", Some(PartOfSpeech::Noun)),
+        ("quickly", None),
+        ("ate", Some(PartOfSpeech::Verb)),
+        ("and", Some(PartOfSpeech::Conjunction)),
+    ] {
+        assert!(
+            words.contains(&word),
+            "{word:?} is missing from {words:?}"
+        );
+    }
+    let relations: Vec<_> = first
+        .links()
+        .map(|link| link.label.link_type().relation())
+        .collect();
+    for relation in [
+        Relation::Determiner,
+        Relation::AttributiveAdjective,
+        Relation::Subject,
+        Relation::PreVerbAdverb,
+        Relation::Object,
+        Relation::VerbConjunction,
+    ] {
+        assert!(
+            relations.contains(&Some(relation)),
+            "{relation:?} is missing from {relations:?}"
+        );
+    }
     Ok(())
 }
