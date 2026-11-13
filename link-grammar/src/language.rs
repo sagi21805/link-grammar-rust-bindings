@@ -33,6 +33,30 @@ pub enum Language {
 }
 
 impl Language {
+    /// Every language, in the order the enum declares them.
+    const ALL: [Self; 12] = [
+        Self::Arabic,
+        Self::English,
+        Self::German,
+        Self::Hebrew,
+        Self::Indonesian,
+        Self::Kazakh,
+        Self::Lithuanian,
+        Self::Persian,
+        Self::Russian,
+        Self::Thai,
+        Self::Turkish,
+        Self::Vietnamese,
+    ];
+
+    /// The language whose [`code`](Self::code) is `code`, if there is
+    /// one.
+    pub(crate) fn from_code(code: &CStr) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|language| language.c_code() == code)
+    }
+
     /// The name of the language's dictionary directory, such as `"en"`.
     pub fn code(self) -> &'static str {
         self.c_code().to_str().expect("language codes are ASCII")
