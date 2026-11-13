@@ -1,6 +1,40 @@
 [package]
 name = "link-grammar-sys"
-version = "0.1.0"
-edition = "2024"
+description = "Raw FFI bindings to the link-grammar C library"
+links = "link-grammar"
+build = "build/main.rs"
+readme = "README.md"
+categories = ["external-ffi-bindings", "text-processing"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+include = [
+    "/README.md",
+    "/build/**",
+    "/src/**",
+    "/generated/**",
+    "/link-grammar/LICENSE",
+    "/link-grammar/configure.ac",
+    "/link-grammar/link-grammar/**/*.c",
+    "/link-grammar/link-grammar/**/*.h",
+    "/link-grammar/link-grammar/link-features.h.in",
+    "!/link-grammar/link-grammar/minisat/**",
+    "!/link-grammar/link-grammar/malloc-dbg*.c",
+    "/link-grammar/data/en/**",
+]
+
+[features]
+default = ["bundled"]
+# Compiles link-grammar from the bundled sources. Without it, the build
+# finds a system install through pkg-config.
+bundled = []
 
 [dependencies]
+libc = "0.2"
+
+[build-dependencies]
+cc = "1"
+pkg-config = "0.3"

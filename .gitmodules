@@ -1,0 +1,3 @@
+[submodule "link-grammar-sys/link-grammar"]
+	path = link-grammar-sys/link-grammar
+	url = https://github.com/opencog/link-grammar.git
