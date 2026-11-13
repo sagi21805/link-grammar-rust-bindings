@@ -1,4 +1,5 @@
 use std::ffi::CStr;
+use std::fmt;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
 
@@ -12,12 +13,11 @@ use crate::{LinkLabel, Word};
 /// nothing.
 ///
 /// ```
-/// # use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
+/// # use link_grammar::{Dictionary, Language, Sentence};
 /// # let dictionary = Dictionary::new(Language::English)?;
-/// # let options = ParseOptions::new();
 /// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-/// sentence.parse(&options)?;
-/// let linkage = sentence.linkage(0, &options).expect("a parse");
+/// sentence.parse()?;
+/// let linkage = sentence.linkage(0).expect("a parse");
 /// let words: Vec<_> = linkage.words().collect();
 /// for link in linkage.links() {
 ///     println!("{} -{}- {}", words[link.left], link.label, words[link.right]);
@@ -73,19 +73,11 @@ impl<'s> Linkage<'s> {
     }
 
     /// The ASCII diagram link-parser prints, wrapped to `width` columns.
-    pub fn diagram(&self, width: usize) -> String {
-        // SAFETY: `raw` is a live linkage.
-        let raw = unsafe {
-            sys::linkage_print_diagram(self.as_raw(), false, width)
-        };
-        // SAFETY: `linkage_print_diagram` returns a NUL-terminated string.
-        let diagram = unsafe { CStr::from_ptr(raw) }
-            .to_string_lossy()
-            .into_owned();
-        // SAFETY: `raw` came from `linkage_print_diagram` and is freed
-        // once.
-        unsafe { sys::linkage_free_diagram(raw) };
-        diagram
+    pub fn diagram(&self, width: usize) -> Diagram<'_> {
+        Diagram {
+            linkage: self,
+            width,
+        }
     }
 
     /// The link at `index`, which is below the link count.
@@ -106,4 +98,41 @@ impl<'s> Linkage<'s> {
 
     /// The handle the C API takes.
     fn as_raw(&self) -> sys::Linkage { self.raw.as_ptr() }
+}
+
+/// The ASCII diagram of a [`Linkage`], wrapped to a column width. Its
+/// [`Display`](fmt::Display) prints what link-parser prints.
+///
+/// ```
+/// # use link_grammar::{Dictionary, Language, Sentence};
+/// # let dictionary = Dictionary::new(Language::English)?;
+/// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
+/// sentence.parse()?;
+/// let linkage = sentence.linkage(0).expect("a parse");
+/// println!("{}", linkage.diagram(80));
+/// # Ok::<(), link_grammar::Error>(())
+/// ```
+pub struct Diagram<'l> {
+    linkage: &'l Linkage<'l>,
+    width: usize,
+}
+
+impl fmt::Display for Diagram<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // SAFETY: `linkage` is a live linkage.
+        let raw = unsafe {
+            sys::linkage_print_diagram(
+                self.linkage.as_raw(),
+                false,
+                self.width,
+            )
+        };
+        // SAFETY: `linkage_print_diagram` returns a NUL-terminated string.
+        let result =
+            f.write_str(&unsafe { CStr::from_ptr(raw) }.to_string_lossy());
+        // SAFETY: `raw` came from `linkage_print_diagram` and is freed
+        // once.
+        unsafe { sys::linkage_free_diagram(raw) };
+        result
+    }
 }
