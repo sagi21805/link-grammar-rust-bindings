@@ -1,3 +1,7 @@
+use std::fmt;
+
+use crate::{Language, PartOfSpeech};
+
 /// A word of a [`Linkage`](crate::Linkage), as link-grammar prints it.
 ///
 /// The printed form is the word, a [`WordGuess`] mark in brackets when the
@@ -21,8 +25,12 @@
 /// assert_eq!(words[4].guess(), Some(WordGuess::Regex));
 /// # Ok::<(), link_grammar::Error>(())
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Word<'l>(&'l str);
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Word<'l> {
+    printed: &'l str,
+    /// The language of the dictionary that parsed the word.
+    language: Option<Language>,
+}
 
 /// Why link-grammar guessed a [`Word`] instead of finding it in the
 /// dictionary. Each variant is the mark it prints in brackets.
@@ -42,8 +50,13 @@ pub enum WordGuess {
 }
 
 impl<'l> Word<'l> {
-    /// Wraps a word that link-grammar printed.
-    pub(crate) fn new(word: &'l str) -> Self { Self(word) }
+    /// Wraps a word that a dictionary of `language` printed.
+    pub(crate) fn new(
+        printed: &'l str,
+        language: Option<Language>,
+    ) -> Self {
+        Self { printed, language }
+    }
 
     /// The word itself, without its guess mark or subscript, such as
     /// `lander` in `lander[?].n`.
@@ -56,6 +69,31 @@ impl<'l> Word<'l> {
     /// Why the dictionary guessed the word, if it did.
     pub fn guess(self) -> Option<WordGuess> { self.parts().guess }
 
+    /// The word class the [`subscript`](Self::subscript) names. It is
+    /// `None` for a word without a subscript, for a subscript that names
+    /// a narrower group, and for every language but English.
+    ///
+    /// ```
+    /// use link_grammar::{Dictionary, Language, PartOfSpeech, Sentence};
+    ///
+    /// let dictionary = Dictionary::new(Language::English)?;
+    /// let mut sentence = Sentence::new(&dictionary, "The lander landed.")?;
+    /// sentence.parse()?;
+    /// let linkage = sentence.linkage(0).expect("a parse");
+    /// let classes: Vec<_> =
+    ///     linkage.words().map(|word| word.part_of_speech()).collect();
+    /// assert_eq!(classes[3], Some(PartOfSpeech::Verb));
+    /// # Ok::<(), link_grammar::Error>(())
+    /// ```
+    pub fn part_of_speech(self) -> Option<PartOfSpeech> {
+        match self.language {
+            Some(Language::English) => {
+                PartOfSpeech::from_english_subscript(self.subscript()?)
+            }
+            _ => None,
+        }
+    }
+
     /// Whether the linkage leaves the word unlinked, which only a parse
     /// with [`set_max_null_count`] above 0 does.
     ///
@@ -64,7 +102,7 @@ impl<'l> Word<'l> {
 
     /// The printed form without its brackets, if the word is unlinked.
     fn unlinked_inner(self) -> Option<&'l str> {
-        self.0
+        self.printed
             .strip_prefix('[')
             .and_then(|inner| inner.strip_suffix(']'))
             .filter(|inner| !inner.is_empty())
@@ -72,15 +110,43 @@ impl<'l> Word<'l> {
 
     /// The printed form split into the word, the guess and the subscript.
     fn parts(self) -> WordParts<'l> {
-        let printed = self.unlinked_inner().unwrap_or(self.0);
+        let printed = self.unlinked_inner().unwrap_or(self.printed);
         WordParts::with_guess(printed)
             .unwrap_or_else(|| WordParts::without_guess(printed))
     }
 }
 
-borrowed_str!(Word);
+borrowed_str!(Word.printed);
+
+/// The printed form, followed by what the crate reads from it.
+///
+/// ```
+/// use link_grammar::{Dictionary, Language, Sentence};
+///
+/// let dictionary = Dictionary::new(Language::English)?;
+/// let mut sentence = Sentence::new(&dictionary, "The lander landed.")?;
+/// sentence.parse()?;
+/// let linkage = sentence.linkage(0).expect("a parse");
+/// let lander = linkage.words().nth(2).expect("a third word");
+/// assert_eq!(
+///     format!("{lander:?}"),
+///     r#"Word { printed: "lander[?].n", parts: WordParts { text: "lander", guess: Some(Unknown), subscript: Some("n") }, part_of_speech: Some(Noun), unlinked: false }"#,
+/// );
+/// # Ok::<(), link_grammar::Error>(())
+/// ```
+impl fmt::Debug for Word<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Word")
+            .field("printed", &self.printed)
+            .field("parts", &self.parts())
+            .field("part_of_speech", &self.part_of_speech())
+            .field("unlinked", &self.is_unlinked())
+            .finish()
+    }
+}
 
 /// The pieces of a printed word.
+#[derive(Debug)]
 struct WordParts<'l> {
     text: &'l str,
     guess: Option<WordGuess>,
