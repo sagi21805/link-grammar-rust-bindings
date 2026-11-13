@@ -1,7 +1,6 @@
 use std::cell::OnceCell;
 use std::ffi::CString;
 use std::iter;
-use std::marker::PhantomData;
 use std::ops::Deref;
 use std::ptr::NonNull;
 
@@ -32,7 +31,7 @@ pub struct Sentence<'d> {
     raw: NonNull<sys::Sentence_s>,
     /// `None` until a parse succeeds.
     parsed: Option<Parsed<'d>>,
-    dictionary: PhantomData<&'d Dictionary>,
+    dictionary: &'d Dictionary,
 }
 
 impl<'d> Sentence<'d> {
@@ -50,7 +49,7 @@ impl<'d> Sentence<'d> {
         Ok(Self {
             raw,
             parsed: None,
-            dictionary: PhantomData,
+            dictionary,
         })
     }
 
@@ -132,7 +131,7 @@ impl<'d> Sentence<'d> {
         });
         // SAFETY: `raw` is a linkage of this sentence, and the returned
         // `Linkage` borrows `self`, so no reparse happens while it lives.
-        Some(unsafe { Linkage::from_raw(raw) })
+        Some(unsafe { Linkage::from_raw(raw, self.dictionary.language()) })
     }
 
     /// Every linkage the parse kept, best first.
