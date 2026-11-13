@@ -4,29 +4,19 @@
 //! echo "The lander touched down on Mars." | cargo run --example parse
 //! ```
 
+use std::io::{self, BufRead};
+
 use link_grammar::{Dictionary, Language, Sentence, Verbosity};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     link_grammar::set_verbosity(Verbosity::Silent);
     let dictionary = Dictionary::new(Language::English)?;
-
-    let hp = include_str!("Harry-Potter-1.txt");
-    for line in hp.lines() {
-        if line.is_empty() {
-            continue;
-        }
-        let mut sentence = Sentence::new(&dictionary, line)?;
-        let found = sentence.parse();
-        match found {
-            Ok(_) => {}
-            Err(e) => {
-                eprintln!("Error: {}", e);
-                eprintln!("Cannot parse line: {}", line);
-                continue;
-            }
-        }
+    for line in io::stdin().lock().lines() {
+        let mut sentence = Sentence::new(&dictionary, &line?)?;
+        let found = sentence.parse()?;
+        println!("Found {found} linkages");
         if let Some(linkage) = sentence.linkage(0) {
-            println!("{}", linkage.diagram(100000));
+            println!("{}", linkage.diagram(80));
         }
     }
     Ok(())
