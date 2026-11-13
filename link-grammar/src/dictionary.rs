@@ -25,6 +25,7 @@ use crate::{Error, Language, Result};
 // `Send` and `Sync` once something needs it.
 pub struct Dictionary {
     raw: NonNull<sys::Dictionary_s>,
+    language: Option<Language>,
 }
 
 impl Dictionary {
@@ -63,9 +64,16 @@ impl Dictionary {
         let _guard = DATA_DIR_LOCK.lock().expect("no panic while locked");
         // SAFETY: `name` is NUL-terminated and outlives the call.
         let raw = unsafe { sys::dictionary_create_lang(name.as_ptr()) };
-        NonNull::new(raw)
-            .map(|raw| Self { raw })
-            .ok_or_else(|| Error::DictionaryNotFound(describe()))
+        let raw = NonNull::new(raw)
+            .ok_or_else(|| Error::DictionaryNotFound(describe()))?;
+        // SAFETY: `raw` is a live dictionary, which owns the string.
+        let code = unsafe {
+            CStr::from_ptr(sys::dictionary_get_lang(raw.as_ptr()))
+        };
+        Ok(Self {
+            raw,
+            language: Language::from_code(code),
+        })
     }
 
     /// Makes later [`new`](Self::new) calls look in `path` first. `path`
@@ -77,6 +85,20 @@ impl Dictionary {
         unsafe { sys::dictionary_set_data_dir(c_path.as_ptr()) };
         Ok(())
     }
+
+    /// The language of the dictionary, which link-grammar takes from the
+    /// name of its directory. It is `None` for a directory
+    /// [`from_path`](Self::from_path) loads whose name isn't a
+    /// [`Language::code`].
+    ///
+    /// ```
+    /// use link_grammar::{Dictionary, Language};
+    ///
+    /// let dictionary = Dictionary::new(Language::English)?;
+    /// assert_eq!(dictionary.language(), Some(Language::English));
+    /// # Ok::<(), link_grammar::Error>(())
+    /// ```
+    pub fn language(&self) -> Option<Language> { self.language }
 
     /// The handle the C API takes.
     pub(crate) fn as_raw(&self) -> sys::Dictionary { self.raw.as_ptr() }
