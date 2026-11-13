@@ -60,7 +60,7 @@ impl Regen {
             )
             .allowlist_type("Cost_Model_type|ConstituentDisplayStyle")
             .opaque_type("(Dictionary|Parse_Options|Sentence|Linkage)_s")
-            .blocklist_type("FILE|_IO_.*|__.*")
+            .blocklist_type("FILE|fpos_t|_IO_.*|__.*")
             .layout_tests(false)
             .generate()?
             .write_to_file(&output)
