@@ -8,15 +8,14 @@ use link_grammar::{
 #[test]
 fn parse_finds_link_parsers_linkages() -> link_grammar::Result<()> {
     let dictionary = Dictionary::new(Language::English)?;
-    let options = ParseOptions::new();
     let mut sentence =
         Sentence::new(&dictionary, "The lander touched down on Mars.")?;
 
-    assert_eq!(sentence.parse(&options)?, 16);
-    assert_eq!(sentence.linkages(&options).count(), 16);
+    assert_eq!(sentence.parse()?, 16);
+    assert_eq!(sentence.linkages().count(), 16);
     assert_eq!(sentence.null_count(), 0);
 
-    let first = sentence.linkage(0, &options).expect("a first linkage");
+    let first = sentence.linkage(0).expect("a first linkage");
     let labels: Vec<&str> =
         first.links().map(|link| link.label.as_str()).collect();
     for label in ["Wd", "D*u", "Ss", "K", "MVp", "Js", "Xp", "WV"] {
@@ -31,12 +30,11 @@ fn parse_finds_link_parsers_linkages() -> link_grammar::Result<()> {
 #[test]
 fn linkage_twice_returns_the_same_words() -> link_grammar::Result<()> {
     let dictionary = Dictionary::new(Language::English)?;
-    let options = ParseOptions::new();
     let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    sentence.parse(&options)?;
+    sentence.parse()?;
 
-    let first = sentence.linkage(0, &options).expect("a first linkage");
-    let again = sentence.linkage(0, &options).expect("a first linkage");
+    let first = sentence.linkage(0).expect("a first linkage");
+    let again = sentence.linkage(0).expect("a first linkage");
     assert!(first.words().eq(again.words()));
     Ok(())
 }
@@ -45,12 +43,11 @@ fn linkage_twice_returns_the_same_words() -> link_grammar::Result<()> {
 fn labels_split_into_link_type_and_subscript() -> link_grammar::Result<()>
 {
     let dictionary = Dictionary::new(Language::English)?;
-    let options = ParseOptions::new();
     let mut sentence =
         Sentence::new(&dictionary, "The lander touched down on Mars.")?;
-    sentence.parse(&options)?;
+    sentence.parse()?;
 
-    let first = sentence.linkage(0, &options).expect("a first linkage");
+    let first = sentence.linkage(0).expect("a first linkage");
     let parts: Vec<(&str, &str)> = first
         .links()
         .map(|link| {
@@ -75,9 +72,8 @@ fn from_path_loads_the_bundled_english() -> link_grammar::Result<()> {
     let path = std::path::Path::new(link_grammar_sys::BUNDLED_DATA_DIR)
         .join("en");
     let dictionary = Dictionary::from_path(&path)?;
-    let options = ParseOptions::new();
     let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    assert!(sentence.parse(&options)? > 0);
+    assert!(sentence.parse()? > 0);
     Ok(())
 }
 
@@ -85,14 +81,13 @@ fn from_path_loads_the_bundled_english() -> link_grammar::Result<()> {
 fn words_split_into_text_guess_and_subscript() -> link_grammar::Result<()>
 {
     let dictionary = Dictionary::new(Language::English)?;
-    let options = ParseOptions::new();
     let mut sentence = Sentence::new(
         &dictionary,
         "Mr. Smith bought 123 widgets in the U.S. yesterday.",
     )?;
-    sentence.parse(&options)?;
+    sentence.parse()?;
 
-    let first = sentence.linkage(0, &options).expect("a first linkage");
+    let first = sentence.linkage(0).expect("a first linkage");
     let words: Vec<_> = first
         .words()
         .map(|word| (word.text(), word.guess(), word.subscript()))
@@ -123,10 +118,10 @@ fn null_parses_mark_unlinked_words() -> link_grammar::Result<()> {
         &dictionary,
         "The the lander touched down on Mars.",
     )?;
-    sentence.parse(&options)?;
+    sentence.parse_with(&options)?;
 
     assert_eq!(sentence.null_count(), 1);
-    let first = sentence.linkage(0, &options).expect("a first linkage");
+    let first = sentence.linkage(0).expect("a first linkage");
     let unlinked: Vec<_> = first
         .words()
         .filter(|word| word.is_unlinked())

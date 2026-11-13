@@ -7,13 +7,12 @@
 /// linkage's string, and each method scans only the word's few bytes.
 ///
 /// ```
-/// use link_grammar::{Dictionary, Language, ParseOptions, Sentence, WordGuess};
+/// use link_grammar::{Dictionary, Language, Sentence, WordGuess};
 ///
 /// let dictionary = Dictionary::new(Language::English)?;
-/// let options = ParseOptions::new();
 /// let mut sentence = Sentence::new(&dictionary, "Mr. Smith bought 123 widgets.")?;
-/// sentence.parse(&options)?;
-/// let linkage = sentence.linkage(0, &options).expect("a parse");
+/// sentence.parse()?;
+/// let linkage = sentence.linkage(0).expect("a parse");
 /// let words: Vec<_> = linkage.words().collect();
 /// assert_eq!(words[1], "Mr..x");
 /// assert_eq!(words[1].text(), "Mr.");

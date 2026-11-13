@@ -5,15 +5,14 @@ the CMU/OpenCog parser that links the words of a sentence with labelled
 grammatical relations.
 
 ```rust
-use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
+use link_grammar::{Dictionary, Language, Sentence};
 
 fn main() -> link_grammar::Result<()> {
     let dictionary = Dictionary::new(Language::English)?;
-    let options = ParseOptions::new();
     let mut sentence =
         Sentence::new(&dictionary, "The lander touched down on Mars.")?;
-    sentence.parse(&options)?;
-    if let Some(linkage) = sentence.linkage(0, &options) {
+    sentence.parse()?;
+    if let Some(linkage) = sentence.linkage(0) {
         println!("{}", linkage.diagram(80));
     }
     Ok(())

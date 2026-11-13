@@ -6,8 +6,9 @@ use link_grammar_sys as sys;
 
 use crate::verbosity::{self, Verbosity};
 
-/// Settings that control how [`Sentence::parse`](crate::Sentence::parse)
-/// searches for linkages.
+/// Settings that control how
+/// [`Sentence::parse_with`](crate::Sentence::parse_with) searches for
+/// linkages.
 ///
 /// ```
 /// use link_grammar::ParseOptions;

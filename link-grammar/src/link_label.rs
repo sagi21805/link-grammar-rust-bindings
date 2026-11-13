@@ -7,13 +7,12 @@
 /// string, and splitting it scans only the label's few bytes.
 ///
 /// ```
-/// use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
+/// use link_grammar::{Dictionary, Language, Sentence};
 ///
 /// let dictionary = Dictionary::new(Language::English)?;
-/// let options = ParseOptions::new();
 /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-/// sentence.parse(&options)?;
-/// let linkage = sentence.linkage(0, &options).expect("a parse");
+/// sentence.parse()?;
+/// let linkage = sentence.linkage(0).expect("a parse");
 /// let subject = linkage
 ///     .links()
 ///     .map(|link| link.label)
