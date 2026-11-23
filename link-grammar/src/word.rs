@@ -1,7 +1,7 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
-use crate::{Language, Link, Linkage, PartOfSpeech};
+use crate::{Language, Link, Linkage, PartOfSpeech, Relation};
 
 /// A word of a [`Linkage`](crate::Linkage), as link-grammar prints it.
 ///
@@ -69,6 +69,28 @@ impl<'l> Word<'l> {
     /// The links with an end at the word, in the linkage's order.
     ///
     /// ```
+    /// use link_grammar::{Dictionary, Language, Sentence};
+    ///
+    /// let dictionary = Dictionary::new(Language::English)?;
+    /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
+    /// sentence.parse()?;
+    /// let linkage = sentence.linkage(0).expect("a parse");
+    /// let mars = linkage.words().nth(1).expect("a second word");
+    /// for link in mars.links() {
+    ///     assert!(link.left_word() == mars || link.right_word() == mars);
+    /// }
+    /// # Ok::<(), link_grammar::Error>(())
+    /// ```
+    pub fn links(self) -> impl Iterator<Item = Link<'l>> {
+        self.linkage.links().filter(move |link| {
+            link.left == self.index || link.right == self.index
+        })
+    }
+
+    /// The first link at the word whose label names `relation`. Use
+    /// [`links`](Self::links) to find every such link.
+    ///
+    /// ```
     /// use link_grammar::{Dictionary, Language, Relation, Sentence};
     ///
     /// let dictionary = Dictionary::new(Language::English)?;
@@ -76,28 +98,16 @@ impl<'l> Word<'l> {
     ///     Sentence::new(&dictionary, "The rover drilled the rock slowly.")?;
     /// sentence.parse()?;
     /// let linkage = sentence.linkage(0).expect("a parse");
-    /// let object = linkage
-    ///     .links()
-    ///     .find(|link| {
-    ///         link.label.link_type().relation() == Some(Relation::Object)
-    ///     })
-    ///     .expect("an object link");
+    /// let object = linkage.link(Relation::Object).expect("an object link");
     /// let verb = object.left_word();
     /// assert_eq!(verb.text(), "drilled");
-    /// let manner = verb
-    ///     .links()
-    ///     .find(|link| {
-    ///         link.label.link_type().relation()
-    ///             == Some(Relation::VerbModifier)
-    ///     })
-    ///     .expect("a verb modifier link");
+    /// let manner =
+    ///     verb.link(Relation::VerbModifier).expect("a verb modifier link");
     /// assert_eq!(manner.right_word().text(), "slowly");
     /// # Ok::<(), link_grammar::Error>(())
     /// ```
-    pub fn links(self) -> impl Iterator<Item = Link<'l>> {
-        self.linkage.links().filter(move |link| {
-            link.left == self.index || link.right == self.index
-        })
+    pub fn link(self, relation: Relation) -> Option<Link<'l>> {
+        self.links().find(|link| link.relation() == Some(relation))
     }
 
     /// The word itself, without its guess mark or subscript, such as

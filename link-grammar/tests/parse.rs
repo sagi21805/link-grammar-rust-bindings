@@ -166,10 +166,8 @@ fn english_words_and_links_have_types() -> link_grammar::Result<()> {
             "{word:?} is missing from {words:?}"
         );
     }
-    let relations: Vec<_> = first
-        .links()
-        .map(|link| link.label.link_type().relation())
-        .collect();
+    let relations: Vec<_> =
+        first.links().map(|link| link.relation()).collect();
     for relation in [
         Relation::Determiner,
         Relation::AttributiveAdjective,

@@ -6,7 +6,7 @@ use std::ptr::{self, NonNull};
 use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
-use crate::{Language, LinkLabel, Word};
+use crate::{Language, LinkLabel, Relation, Word};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
@@ -33,7 +33,8 @@ pub struct Linkage<'s> {
 /// A labelled link between two words of a [`Linkage`]. `left` and
 /// `right` are indices into [`Linkage::words`], and
 /// [`left_word`](Self::left_word) and [`right_word`](Self::right_word)
-/// look up the words at them.
+/// look up the words at them. [`relation`](Self::relation) names what
+/// the label means.
 ///
 /// ```
 /// # use link_grammar::{Dictionary, Language, Relation, Sentence};
@@ -41,12 +42,8 @@ pub struct Linkage<'s> {
 /// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
 /// sentence.parse()?;
 /// let linkage = sentence.linkage(0).expect("a parse");
-/// let subject = linkage
-///     .links()
-///     .find(|link| {
-///         link.label.link_type().relation() == Some(Relation::Subject)
-///     })
-///     .expect("a subject link");
+/// let subject = linkage.link(Relation::Subject).expect("a subject link");
+/// assert_eq!(subject.relation(), Some(Relation::Subject));
 /// assert_eq!(subject.left_word().text(), "Mars");
 /// assert_eq!(subject.right_word().text(), "is");
 /// # Ok::<(), link_grammar::Error>(())
@@ -65,6 +62,12 @@ impl<'l> Link<'l> {
 
     /// The word at the link's right end.
     pub fn right_word(&self) -> Word<'l> { self.linkage.word(self.right) }
+
+    /// The relation the label's link type names, as
+    /// [`LinkType::relation`](crate::LinkType::relation) gives it.
+    pub fn relation(&self) -> Option<Relation> {
+        self.label.link_type().relation()
+    }
 }
 
 /// The indices and label, followed by the words at the indices.
@@ -123,7 +126,25 @@ impl<'s> Linkage<'s> {
     pub fn links(&self) -> impl ExactSizeIterator<Item = Link<'_>> {
         // SAFETY: `raw` is a live linkage.
         let count = unsafe { sys::linkage_get_num_links(self.as_raw()) };
-        (0..count).map(|index| self.link(index))
+        (0..count).map(|index| self.link_at(index))
+    }
+
+    /// The first link whose label names `relation`. Use
+    /// [`links`](Self::links) to find every such link.
+    ///
+    /// ```
+    /// # use link_grammar::{Dictionary, Language, Relation, Sentence};
+    /// # let dictionary = Dictionary::new(Language::English)?;
+    /// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
+    /// sentence.parse()?;
+    /// let linkage = sentence.linkage(0).expect("a parse");
+    /// let subject = linkage.link(Relation::Subject).expect("a subject link");
+    /// assert_eq!(subject.left_word().text(), "Mars");
+    /// assert!(linkage.link(Relation::Object).is_none());
+    /// # Ok::<(), link_grammar::Error>(())
+    /// ```
+    pub fn link(&self, relation: Relation) -> Option<Link<'_>> {
+        self.links().find(|link| link.relation() == Some(relation))
     }
 
     /// The ASCII diagram link-parser prints, wrapped to `width` columns.
@@ -135,7 +156,7 @@ impl<'s> Linkage<'s> {
     }
 
     /// The link at `index`, which is below the link count.
-    fn link(&self, index: usize) -> Link<'_> {
+    fn link_at(&self, index: usize) -> Link<'_> {
         let raw = self.as_raw();
         // SAFETY: `index` is below the link count, so the C API returns
         // the indices of words in the linkage.
