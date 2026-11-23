@@ -168,8 +168,11 @@ impl<'s> Linkage<'s> {
         let printed = unsafe {
             sys::linkage_get_word(self.as_raw(), index).as_utf8()
         };
-        Word::new(printed, self.language)
+        Word::new(printed, index, self)
     }
+
+    /// The language of the sentence's dictionary.
+    pub(crate) fn language(&self) -> Option<Language> { self.language }
 
     /// The handle the C API takes.
     fn as_raw(&self) -> sys::Linkage { self.raw.as_ptr() }
