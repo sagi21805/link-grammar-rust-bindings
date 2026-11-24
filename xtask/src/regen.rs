@@ -2,9 +2,8 @@
 //! `link-grammar-sys` commits, so its users need neither libclang nor
 //! flex.
 
-use std::fs;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use bindgen::{RustEdition, RustTarget};
@@ -20,14 +19,8 @@ pub struct Regen {
 }
 
 impl Regen {
-    /// The workspace this xtask was built from.
-    pub fn new() -> Self {
-        let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .expect("xtask sits inside the workspace")
-            .to_path_buf();
-        Self { workspace }
-    }
+    /// The generated files of the workspace at `workspace`.
+    pub fn new(workspace: PathBuf) -> Self { Self { workspace } }
 
     /// Regenerates `src/bindings.rs` and `generated/pp_lexer.c`.
     pub fn run(&self) -> Result<(), RegenError> {
@@ -100,13 +93,6 @@ impl Regen {
     /// to the workspace and `--noline` drops `#line` directives, so the
     /// output doesn't depend on where the repository is checked out.
     fn lexer(&self) -> Result<(), RegenError> {
-        let generated = self.workspace.join("link-grammar-sys/generated");
-        fs::create_dir_all(&generated).map_err(|source| {
-            RegenError::Write {
-                path: generated,
-                source,
-            }
-        })?;
         Command::new("flex")
             .current_dir(&self.workspace)
             .args([

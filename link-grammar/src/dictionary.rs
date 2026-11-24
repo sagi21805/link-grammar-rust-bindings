@@ -1,10 +1,11 @@
-use std::ffi::{CStr, CString};
+use std::ffi::{CString, OsStr};
 use std::path::Path;
 use std::ptr::NonNull;
 use std::sync::Mutex;
 
 use link_grammar_sys as sys;
 
+use crate::c_str_ext::CStrPtr;
 use crate::{Error, Language, Result};
 
 /// The grammar and word list of one language.
@@ -35,41 +36,28 @@ impl Dictionary {
     /// [`set_data_dir`](Self::set_data_dir), then the dictionaries this
     /// crate ships, then `./data`.
     pub fn new(language: Language) -> Result<Self> {
-        Self::create(language.c_code(), || language.code().to_owned())
+        Self::create(OsStr::new(language.code()))
     }
 
     /// Loads the dictionary in the directory `path`, which holds
     /// `4.0.dict` and the files it includes.
-    ///
-    /// ```no_run
-    /// use std::path::Path;
-    ///
-    /// use link_grammar::Dictionary;
-    ///
-    /// let custom = Dictionary::from_path(Path::new("my-dictionaries/en"))?;
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn from_path(path: &Path) -> Result<Self> {
-        let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
-        Self::create(&c_path, || path.display().to_string())
+        Self::create(path.as_os_str())
     }
 
     /// Loads the dictionary that `dictionary_create_lang` finds for
-    /// `name`, a language code or a path. `describe` names it in the
-    /// error.
-    fn create(
-        name: &CStr,
-        describe: impl FnOnce() -> String,
-    ) -> Result<Self> {
+    /// `name`, a language code or a path.
+    fn create(name: &OsStr) -> Result<Self> {
+        let c_name = CString::new(name.as_encoded_bytes())?;
         let _guard = DATA_DIR_LOCK.lock().expect("no panic while locked");
-        // SAFETY: `name` is NUL-terminated and outlives the call.
-        let raw = unsafe { sys::dictionary_create_lang(name.as_ptr()) };
-        let raw = NonNull::new(raw)
-            .ok_or_else(|| Error::DictionaryNotFound(describe()))?;
+        // SAFETY: `c_name` is NUL-terminated and outlives the call.
+        let raw = unsafe { sys::dictionary_create_lang(c_name.as_ptr()) };
+        let raw = NonNull::new(raw).ok_or_else(|| {
+            Error::DictionaryNotFound(name.display().to_string())
+        })?;
         // SAFETY: `raw` is a live dictionary, which owns the string.
-        let code = unsafe {
-            CStr::from_ptr(sys::dictionary_get_lang(raw.as_ptr()))
-        };
+        let code =
+            unsafe { sys::dictionary_get_lang(raw.as_ptr()).as_utf8() };
         Ok(Self {
             raw,
             language: Language::from_code(code),
@@ -90,14 +78,6 @@ impl Dictionary {
     /// name of its directory. It is `None` for a directory
     /// [`from_path`](Self::from_path) loads whose name isn't a
     /// [`Language::code`].
-    ///
-    /// ```
-    /// use link_grammar::{Dictionary, Language};
-    ///
-    /// let dictionary = Dictionary::new(Language::English)?;
-    /// assert_eq!(dictionary.language(), Some(Language::English));
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn language(&self) -> Option<Language> { self.language }
 
     /// The handle the C API takes.

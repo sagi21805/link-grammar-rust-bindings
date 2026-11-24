@@ -1,4 +1,4 @@
-relations! {
+coded_enum! {
     /// The grammatical relation that an English [`LinkType`] names, such
     /// as [`Subject`](Self::Subject) for `S`.
     ///
@@ -325,7 +325,7 @@ impl Relation {
     pub(crate) fn from_english_link_type(link_type: &str) -> Option<Self> {
         match link_type {
             idiom if idiom.starts_with("_I") => Some(Self::Idiom),
-            link_type => Self::from_table(link_type),
+            link_type => Self::from_code(link_type),
         }
     }
 }

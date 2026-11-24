@@ -10,23 +10,8 @@ the CMU/OpenCog syntactic parser for English and other languages.
 
 ## Building
 
-By default, `link-grammar-sys` builds the C library itself from the
-upstream sources it ships, so `cargo add link-grammar` needs only a C
-compiler. You don't run `./configure && make`, and you don't need libclang
-or flex. The English dictionary ships with the crate and loads without any
-setup. Point `Dictionary::set_data_dir` at a dictionary tree to load other
-languages.
-
-To link against a link-grammar you installed yourself, turn off the
-`bundled` feature. The build then finds the library through pkg-config.
-
-```toml
-[dependencies]
-link-grammar = { version = "0.1", default-features = false }
-```
-
-The bundled build supports Linux with glibc and macOS for now. On other
-targets, install link-grammar and turn off `bundled`.
+[`link-grammar/README.md`](link-grammar/README.md) covers the build
+features and the dictionaries.
 
 ## Contributing
 

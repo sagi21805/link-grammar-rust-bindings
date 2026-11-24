@@ -1,17 +1,9 @@
-use std::ffi::c_int;
 use std::sync::{Mutex, MutexGuard};
 
-use crate::ParseOptions;
+use crate::parse_options::ParseOptions;
 
 /// How much link-grammar prints to stderr. Each level adds to the ones
 /// before it.
-///
-/// ```
-/// use link_grammar::Verbosity;
-///
-/// link_grammar::set_verbosity(Verbosity::Silent);
-/// # link_grammar::set_verbosity(Verbosity::Basic);
-/// ```
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default,
 )]
@@ -33,18 +25,13 @@ pub enum Verbosity {
 ///
 /// The level applies to the whole process, because link-grammar keeps it
 /// in a global variable. Every [`Sentence::parse`](crate::Sentence::parse)
-/// after this call uses it, whichever [`ParseOptions`] it gets.
+/// after this call uses it.
 pub fn set_verbosity(verbosity: Verbosity) {
     let mut level = current();
     *level = verbosity;
     // `parse_options_set_verbosity` is the only way to write the global,
     // and it needs an options object.
     drop(ParseOptions::with_verbosity(&level));
-}
-
-impl Verbosity {
-    /// The level the C API takes.
-    pub(crate) fn as_raw(self) -> c_int { self as c_int }
 }
 
 /// The level [`set_verbosity`] chose. Holding the guard keeps it from

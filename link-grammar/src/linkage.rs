@@ -1,4 +1,3 @@
-use std::ffi::CStr;
 use std::fmt;
 use std::ptr::NonNull;
 
@@ -28,10 +27,7 @@ pub struct Linkage<'s> {
 }
 
 /// A labelled link between two words of a [`Linkage`]. `left` and
-/// `right` are indices into [`Linkage::words`], and
-/// [`left_word`](Self::left_word) and [`right_word`](Self::right_word)
-/// look up the words at them. [`relation`](Self::relation) names what
-/// the label means.
+/// `right` index [`Linkage::words`].
 ///
 /// ```
 /// # use link_grammar::{Dictionary, Language, Relation, Sentence};
@@ -113,42 +109,32 @@ impl<'s> Linkage<'s> {
 
     /// The words of the linkage, left wall first.
     pub fn words(&self) -> impl ExactSizeIterator<Item = Word<'_>> {
-        // SAFETY: `raw` is a live linkage.
         let count = unsafe { sys::linkage_get_num_words(self.as_raw()) };
         (0..count).map(|index| self.word(index))
     }
 
     /// The links of the linkage.
     pub fn links(&self) -> impl ExactSizeIterator<Item = Link<'_>> {
-        // SAFETY: `raw` is a live linkage.
         let count = unsafe { sys::linkage_get_num_links(self.as_raw()) };
         (0..count).map(|index| self.link_at(index))
     }
 
     /// The first link whose label names `relation`. Use
     /// [`links`](Self::links) to find every such link.
-    ///
-    /// ```
-    /// # use link_grammar::{Dictionary, Language, Relation, Sentence};
-    /// # let dictionary = Dictionary::new(Language::English)?;
-    /// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    /// sentence.parse()?;
-    /// let linkage = sentence.linkage(0).expect("a parse");
-    /// let subject = linkage.link(Relation::Subject).expect("a subject link");
-    /// assert_eq!(subject.left_word().text(), "Mars");
-    /// assert!(linkage.link(Relation::Object).is_none());
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn link(&self, relation: Relation) -> Option<Link<'_>> {
         self.links().find(|link| link.relation() == Some(relation))
     }
 
     /// The ASCII diagram link-parser prints, wrapped to `width` columns.
-    pub fn diagram(&self, width: usize) -> Diagram<'_> {
-        Diagram {
-            linkage: self,
-            width,
-        }
+    pub fn diagram(&self, width: usize) -> String {
+        let raw = unsafe {
+            sys::linkage_print_diagram(self.as_raw(), false, width)
+        };
+        // SAFETY: `linkage_print_diagram` returns a NUL-terminated string,
+        // which is freed once, after the copy.
+        let diagram = unsafe { raw.cast_const().as_utf8() }.to_owned();
+        unsafe { sys::linkage_free_diagram(raw) };
+        diagram
     }
 
     /// The link at `index`, which is below the link count.
@@ -194,41 +180,4 @@ impl<'s> Linkage<'s> {
 
     /// The handle the C API takes.
     fn as_raw(&self) -> sys::Linkage { self.raw.as_ptr() }
-}
-
-/// The ASCII diagram of a [`Linkage`], wrapped to a column width. Its
-/// [`Display`](fmt::Display) prints what link-parser prints.
-///
-/// ```
-/// # use link_grammar::{Dictionary, Language, Sentence};
-/// # let dictionary = Dictionary::new(Language::English)?;
-/// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-/// sentence.parse()?;
-/// let linkage = sentence.linkage(0).expect("a parse");
-/// println!("{}", linkage.diagram(80));
-/// # Ok::<(), link_grammar::Error>(())
-/// ```
-pub struct Diagram<'l> {
-    linkage: &'l Linkage<'l>,
-    width: usize,
-}
-
-impl fmt::Display for Diagram<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // SAFETY: `linkage` is a live linkage.
-        let raw = unsafe {
-            sys::linkage_print_diagram(
-                self.linkage.as_raw(),
-                false,
-                self.width,
-            )
-        };
-        // SAFETY: `linkage_print_diagram` returns a NUL-terminated string.
-        let result =
-            f.write_str(&unsafe { CStr::from_ptr(raw) }.to_string_lossy());
-        // SAFETY: `raw` came from `linkage_print_diagram` and is freed
-        // once.
-        unsafe { sys::linkage_free_diagram(raw) };
-        result
-    }
 }

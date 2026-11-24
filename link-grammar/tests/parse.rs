@@ -2,8 +2,7 @@
 //! against `link-parser en`.
 
 use link_grammar::{
-    Dictionary, Language, ParseOptions, PartOfSpeech, Relation, Sentence,
-    WordGuess,
+    Dictionary, Language, PartOfSpeech, Relation, Sentence, WordGuess,
 };
 
 #[test]
@@ -29,7 +28,7 @@ fn parse_finds_link_parsers_linkages() -> link_grammar::Result<()> {
 }
 
 #[test]
-fn linkage_twice_returns_the_same_words() -> link_grammar::Result<()> {
+fn linkage_twice_returns_the_same_linkage() -> link_grammar::Result<()> {
     let dictionary = Dictionary::new(Language::English)?;
     let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
     sentence.parse()?;
@@ -37,17 +36,6 @@ fn linkage_twice_returns_the_same_words() -> link_grammar::Result<()> {
     let first = sentence.linkage(0).expect("a first linkage");
     let again = sentence.linkage(0).expect("a first linkage");
     assert!(first.words().eq(again.words()));
-    Ok(())
-}
-
-#[test]
-fn linkage_twice_returns_the_same_links() -> link_grammar::Result<()> {
-    let dictionary = Dictionary::new(Language::English)?;
-    let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    sentence.parse()?;
-
-    let first = sentence.linkage(0).expect("a first linkage");
-    let again = sentence.linkage(0).expect("a first linkage");
     assert!(first.links().eq(again.links()));
     Ok(())
 }
@@ -126,13 +114,11 @@ fn words_split_into_text_guess_and_subscript() -> link_grammar::Result<()>
 #[test]
 fn null_parses_mark_unlinked_words() -> link_grammar::Result<()> {
     let dictionary = Dictionary::new(Language::English)?;
-    let mut options = ParseOptions::new();
-    options.set_max_null_count(1);
     let mut sentence = Sentence::new(
         &dictionary,
         "The the lander touched down on Mars.",
     )?;
-    sentence.parse_with(&options)?;
+    sentence.parse()?;
 
     assert_eq!(sentence.null_count(), 1);
     let first = sentence.linkage(0).expect("a first linkage");

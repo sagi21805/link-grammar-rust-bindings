@@ -22,12 +22,8 @@ pub struct PackageCheck {
 }
 
 impl PackageCheck {
-    /// The check for the workspace this xtask was built from.
-    pub fn new() -> Self {
-        let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
-            .parent()
-            .expect("xtask sits inside the workspace")
-            .to_path_buf();
+    /// The check for the workspace at `workspace`.
+    pub fn new(workspace: PathBuf) -> Self {
         let dir = workspace.join("target/package-check");
         Self { workspace, dir }
     }

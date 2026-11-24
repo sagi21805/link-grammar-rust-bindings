@@ -21,7 +21,6 @@ jobs:
   bundled:
     strategy:
       matrix:
-        # Step 8 of the plan adds windows-latest.
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
