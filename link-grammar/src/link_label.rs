@@ -49,10 +49,14 @@ impl<'l> LinkLabel<'l> {
     }
 
     /// The uppercase part, such as `MV` in `MVp`.
-    pub fn link_type(self) -> LinkType<'l> { LinkType(self.split().0) }
+    pub fn link_type(self) -> LinkType<'l> {
+        LinkType(self.split().0)
+    }
 
     /// The lowercase part, such as `p` in `MVp`.
-    pub fn subscript(self) -> Subscript<'l> { Subscript(self.split().1) }
+    pub fn subscript(self) -> Subscript<'l> {
+        Subscript(self.split().1)
+    }
 
     /// The label split where its subscript starts.
     fn split(self) -> (&'l str, &'l str) {

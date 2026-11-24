@@ -44,7 +44,9 @@ pub fn set_verbosity(verbosity: Verbosity) {
 
 impl Verbosity {
     /// The level the C API takes.
-    pub(crate) fn as_raw(self) -> c_int { self as c_int }
+    pub(crate) fn as_raw(self) -> c_int {
+        self as c_int
+    }
 }
 
 /// The level [`set_verbosity`] chose. Holding the guard keeps it from

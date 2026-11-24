@@ -98,10 +98,14 @@ impl Dictionary {
     /// assert_eq!(dictionary.language(), Some(Language::English));
     /// # Ok::<(), link_grammar::Error>(())
     /// ```
-    pub fn language(&self) -> Option<Language> { self.language }
+    pub fn language(&self) -> Option<Language> {
+        self.language
+    }
 
     /// The handle the C API takes.
-    pub(crate) fn as_raw(&self) -> sys::Dictionary { self.raw.as_ptr() }
+    pub(crate) fn as_raw(&self) -> sys::Dictionary {
+        self.raw.as_ptr()
+    }
 }
 
 impl Drop for Dictionary {

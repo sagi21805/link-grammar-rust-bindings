@@ -163,11 +163,15 @@ impl LinkGrammarBuild {
 
     /// Where `link-grammar/link-features.h` is written. `cargo xtask
     /// regen` gives this directory to bindgen too.
-    fn include_dir(&self) -> PathBuf { self.out_dir.join("include") }
+    fn include_dir(&self) -> PathBuf {
+        self.out_dir.join("include")
+    }
 
     /// The dictionaries, one directory per language. The library looks
     /// here when a program doesn't set its own data directory.
-    fn data_dir(&self) -> PathBuf { self.source_root().join("data") }
+    fn data_dir(&self) -> PathBuf {
+        self.source_root().join("data")
+    }
 }
 
 /// A target whose configure results the bundled build knows.

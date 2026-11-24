@@ -49,8 +49,9 @@ impl Regen {
             .clang_arg(format!("-I{}", include_dir.display()))
             .clang_arg(format!("-I{}", source_root.display()))
             .rust_target(
-                RustTarget::stable(85, 0)
-                    .expect("1.85 is newer than bindgen's earliest target"),
+                RustTarget::stable(85, 0).expect(
+                    "1.85 is newer than bindgen's earliest target",
+                ),
             )
             .rust_edition(RustEdition::Edition2024)
             .formatter(bindgen::Formatter::Prettyplease)
@@ -64,7 +65,10 @@ impl Regen {
             .layout_tests(false)
             .generate()?
             .write_to_file(&output)
-            .map_err(|source| RegenError::Write { path: output, source })
+            .map_err(|source| RegenError::Write {
+                path: output,
+                source,
+            })
     }
 
     /// Builds `link-grammar-sys` and returns the directory its build

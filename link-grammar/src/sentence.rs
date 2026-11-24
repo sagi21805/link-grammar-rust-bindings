@@ -181,10 +181,14 @@ impl<'d> Sentence<'d> {
     }
 
     /// The dictionary the sentence is parsed with.
-    pub(crate) fn dictionary(&self) -> &'d Dictionary { self.dictionary }
+    pub(crate) fn dictionary(&self) -> &'d Dictionary {
+        self.dictionary
+    }
 
     /// The handle the C API takes.
-    fn as_raw(&self) -> sys::Sentence { self.raw.as_ptr() }
+    fn as_raw(&self) -> sys::Sentence {
+        self.raw.as_ptr()
+    }
 }
 
 impl Drop for Sentence<'_> {

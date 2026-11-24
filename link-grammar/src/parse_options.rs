@@ -23,7 +23,9 @@ pub struct ParseOptions {
 
 impl ParseOptions {
     /// link-grammar's default options.
-    pub fn new() -> Self { Self::with_verbosity(&verbosity::current()) }
+    pub fn new() -> Self {
+        Self::with_verbosity(&verbosity::current())
+    }
 
     /// The most linkages a parse keeps. Values past `i32::MAX` keep
     /// `i32::MAX`.
@@ -88,11 +90,15 @@ impl ParseOptions {
     }
 
     /// The handle the C API takes.
-    pub(crate) fn as_raw(&self) -> sys::Parse_Options { self.raw.as_ptr() }
+    pub(crate) fn as_raw(&self) -> sys::Parse_Options {
+        self.raw.as_ptr()
+    }
 }
 
 impl Default for ParseOptions {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Drop for ParseOptions {
