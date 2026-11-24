@@ -17,7 +17,7 @@ fn parse_finds_link_parsers_linkages() -> link_grammar::Result<()> {
 
     let first = sentence.linkage(0).expect("a first linkage");
     let labels: Vec<&str> =
-        first.links().map(|link| link.label.as_str()).collect();
+        first.links().map(|link| link.label().as_str()).collect();
     for label in ["Wd", "D*u", "Ss", "K", "MVp", "Js", "Xp", "WV"] {
         assert!(
             labels.contains(&label),
@@ -53,8 +53,8 @@ fn labels_split_into_link_type_and_subscript() -> link_grammar::Result<()>
         .links()
         .map(|link| {
             (
-                link.label.link_type().as_str(),
-                link.label.subscript().as_str(),
+                link.label().link_type().as_str(),
+                link.label().subscript().as_str(),
             )
         })
         .collect();

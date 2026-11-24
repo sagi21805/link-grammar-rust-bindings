@@ -4,7 +4,9 @@ use std::ptr::NonNull;
 use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
-use crate::{Language, LinkLabel, Relation, Sentence, Word};
+#[cfg(feature = "bundled")]
+use crate::internals_ext::{LinkInternals, LinkageInternals};
+use crate::{Dictionary, Language, LinkLabel, Relation, Sentence, Word};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
@@ -17,7 +19,7 @@ use crate::{Language, LinkLabel, Relation, Sentence, Word};
 /// sentence.parse()?;
 /// let linkage = sentence.linkage(0).expect("a parse");
 /// for link in linkage.links() {
-///     println!("{} -{}- {}", link.left_word(), link.label, link.right_word());
+///     println!("{} -{}- {}", link.left_word(), link.label(), link.right_word());
 /// }
 /// # Ok::<(), link_grammar::Error>(())
 /// ```
@@ -45,7 +47,8 @@ pub struct Linkage<'s> {
 pub struct Link<'l> {
     pub left: usize,
     pub right: usize,
-    pub label: LinkLabel<'l>,
+    /// The link's position in the linkage, as the C API numbers links.
+    index: usize,
     linkage: &'l Linkage<'l>,
 }
 
@@ -56,15 +59,41 @@ impl<'l> Link<'l> {
     /// The word at the link's right end.
     pub fn right_word(&self) -> Word<'l> { self.linkage.word(self.right) }
 
-    /// The relation the label's [`LinkType`](crate::LinkType) names. It
+    /// The relation the link's [`LinkType`](crate::LinkType) names. It
     /// is `None` for every language but English.
     pub fn relation(&self) -> Option<Relation> {
-        match self.linkage.language() {
+        #[cfg(feature = "bundled")]
+        return self
+            .linkage
+            .dictionary()
+            .link_types()
+            .relation(self.raw().link_type());
+        #[cfg(not(feature = "bundled"))]
+        return match self.linkage.language() {
             Some(Language::English) => Relation::from_english_link_type(
-                self.label.link_type().as_str(),
+                self.label().link_type().as_str(),
             ),
             _ => None,
-        }
+        };
+    }
+
+    /// The label link-grammar prints for the link, such as `Ss*s`.
+    pub fn label(&self) -> LinkLabel<'l> {
+        #[cfg(feature = "bundled")]
+        return LinkLabel::new(self.raw().label());
+        #[cfg(not(feature = "bundled"))]
+        // SAFETY: `index` is below the link count, and the label lives
+        // as long as the linkage.
+        return LinkLabel::new(unsafe {
+            sys::linkage_get_link_label(self.linkage.as_raw(), self.index)
+                .as_utf8()
+        });
+    }
+
+    /// The link's private fields.
+    #[cfg(feature = "bundled")]
+    fn raw(&self) -> &'l link_grammar_sys::internals::Link_s {
+        &self.linkage.internals().links()[self.index]
     }
 }
 
@@ -74,7 +103,7 @@ impl fmt::Debug for Link<'_> {
         f.debug_struct("Link")
             .field("left", &self.left)
             .field("right", &self.right)
-            .field("label", &self.label)
+            .field("label", &self.label())
             .field("left_word", &self.left_word())
             .field("right_word", &self.right_word())
             .finish()
@@ -87,7 +116,7 @@ impl PartialEq for Link<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.left == other.left
             && self.right == other.right
-            && self.label == other.label
+            && self.label() == other.label()
     }
 }
 
@@ -114,6 +143,22 @@ impl<'s> Linkage<'s> {
     }
 
     /// The links of the linkage.
+    #[cfg(feature = "bundled")]
+    pub fn links(&self) -> impl ExactSizeIterator<Item = Link<'_>> {
+        self.internals()
+            .links()
+            .iter()
+            .enumerate()
+            .map(|(index, raw)| Link {
+                left: raw.lw.into(),
+                right: raw.rw.into(),
+                index,
+                linkage: self,
+            })
+    }
+
+    /// The links of the linkage.
+    #[cfg(not(feature = "bundled"))]
     pub fn links(&self) -> impl ExactSizeIterator<Item = Link<'_>> {
         let count = unsafe { sys::linkage_get_num_links(self.as_raw()) };
         (0..count).map(|index| self.link_at(index))
@@ -138,6 +183,7 @@ impl<'s> Linkage<'s> {
     }
 
     /// The link at `index`, which is below the link count.
+    #[cfg(not(feature = "bundled"))]
     fn link_at(&self, index: usize) -> Link<'_> {
         let raw = self.as_raw();
         // SAFETY: `index` is below the link count, so the C API returns
@@ -148,17 +194,10 @@ impl<'s> Linkage<'s> {
                 sys::linkage_get_link_rword(raw, index),
             )
         };
-        // SAFETY: `index` is below the link count, and the label lives as
-        // long as the linkage.
-        let label = unsafe {
-            LinkLabel::new(
-                sys::linkage_get_link_label(raw, index).as_utf8(),
-            )
-        };
         Link {
             left,
             right,
-            label,
+            index,
             linkage: self,
         }
     }
@@ -175,9 +214,14 @@ impl<'s> Linkage<'s> {
 
     /// The language of the sentence's dictionary.
     pub(crate) fn language(&self) -> Option<Language> {
-        self.sentence.dictionary().language()
+        self.dictionary().language()
+    }
+
+    /// The dictionary the sentence was parsed with.
+    pub(crate) fn dictionary(&self) -> &'s Dictionary {
+        self.sentence.dictionary()
     }
 
     /// The handle the C API takes.
-    fn as_raw(&self) -> sys::Linkage { self.raw.as_ptr() }
+    pub(crate) fn as_raw(&self) -> sys::Linkage { self.raw.as_ptr() }
 }

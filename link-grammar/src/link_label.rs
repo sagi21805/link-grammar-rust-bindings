@@ -14,7 +14,7 @@
 /// let linkage = sentence.linkage(0).expect("a parse");
 /// let subject = linkage
 ///     .links()
-///     .map(|link| link.label)
+///     .map(|link| link.label())
 ///     .find(|label| label.link_type() == "S")
 ///     .expect("a subject link");
 /// assert_eq!(subject, "Ss*s");

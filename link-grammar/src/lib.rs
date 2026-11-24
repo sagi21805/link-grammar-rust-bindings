@@ -26,8 +26,12 @@ mod macros;
 mod c_str_ext;
 mod dictionary;
 mod error;
+#[cfg(feature = "bundled")]
+mod internals_ext;
 mod language;
 mod link_label;
+#[cfg(feature = "bundled")]
+mod link_types;
 mod linkage;
 mod parse_options;
 mod part_of_speech;

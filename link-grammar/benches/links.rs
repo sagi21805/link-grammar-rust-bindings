@@ -69,7 +69,7 @@ fn every_link<'l>(
 /// Whether `link` joins a singular subject to its verb, as `Ss` does.
 fn is_singular_subject(link: &Link<'_>) -> bool {
     link.relation() == Some(Relation::Subject)
-        && link.label.subscript().as_str().starts_with('s')
+        && link.label().subscript().as_str().starts_with('s')
 }
 
 /// Each of [`SENTENCES`], parsed once.
