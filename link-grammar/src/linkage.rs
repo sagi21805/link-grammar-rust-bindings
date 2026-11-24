@@ -232,13 +232,14 @@ impl<'s> Linkage<'s> {
     }
 
     /// The word at `index`, which is below the word count.
-    fn word(&self, index: usize) -> Word<'_> {
+    fn word(&self, index: usize) -> Word<'_> { Word::new(index, self) }
+
+    /// The printed form of the word at `index`, which is below the word
+    /// count.
+    pub(crate) fn printed_word(&self, index: usize) -> &str {
         // SAFETY: `index` is below the word count, and the word lives as
         // long as the linkage.
-        let printed = unsafe {
-            sys::linkage_get_word(self.as_raw(), index).as_utf8()
-        };
-        Word::new(printed, index, self)
+        unsafe { sys::linkage_get_word(self.as_raw(), index).as_utf8() }
     }
 
     /// The language of the sentence's dictionary.
