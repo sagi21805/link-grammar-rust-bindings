@@ -40,7 +40,7 @@ pub use dictionary::Dictionary;
 pub use error::{Error, Result};
 pub use language::Language;
 pub use link_label::{LinkLabel, LinkType, Subscript};
-pub use linkage::{Diagram, Link, Linkage};
+pub use linkage::{Link, Linkage};
 pub use part_of_speech::PartOfSpeech;
 pub use relation::Relation;
 pub use sentence::Sentence;

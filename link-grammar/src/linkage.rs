@@ -1,4 +1,3 @@
-use std::ffi::CStr;
 use std::fmt;
 use std::ptr::NonNull;
 
@@ -127,11 +126,15 @@ impl<'s> Linkage<'s> {
     }
 
     /// The ASCII diagram link-parser prints, wrapped to `width` columns.
-    pub fn diagram(&self, width: usize) -> Diagram<'_> {
-        Diagram {
-            linkage: self,
-            width,
-        }
+    pub fn diagram(&self, width: usize) -> String {
+        let raw = unsafe {
+            sys::linkage_print_diagram(self.as_raw(), false, width)
+        };
+        // SAFETY: `linkage_print_diagram` returns a NUL-terminated string,
+        // which is freed once, after the copy.
+        let diagram = unsafe { raw.cast_const().as_utf8() }.to_owned();
+        unsafe { sys::linkage_free_diagram(raw) };
+        diagram
     }
 
     /// The link at `index`, which is below the link count.
@@ -177,30 +180,4 @@ impl<'s> Linkage<'s> {
 
     /// The handle the C API takes.
     fn as_raw(&self) -> sys::Linkage { self.raw.as_ptr() }
-}
-
-/// The ASCII diagram of a [`Linkage`], wrapped to a column width. Its
-/// [`Display`](fmt::Display) prints what link-parser prints.
-pub struct Diagram<'l> {
-    linkage: &'l Linkage<'l>,
-    width: usize,
-}
-
-impl fmt::Display for Diagram<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let raw = unsafe {
-            sys::linkage_print_diagram(
-                self.linkage.as_raw(),
-                false,
-                self.width,
-            )
-        };
-        // SAFETY: `linkage_print_diagram` returns a NUL-terminated string.
-        let result =
-            f.write_str(&unsafe { CStr::from_ptr(raw) }.to_string_lossy());
-        // SAFETY: `raw` came from `linkage_print_diagram` and is freed
-        // once.
-        unsafe { sys::linkage_free_diagram(raw) };
-        result
-    }
 }
