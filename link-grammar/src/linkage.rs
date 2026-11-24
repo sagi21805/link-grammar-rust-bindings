@@ -3,12 +3,12 @@ use std::ptr::NonNull;
 
 use link_grammar_sys as sys;
 
-use crate::c_str_ext::CStrPtr;
 #[cfg(feature = "bundled")]
 use crate::internals_ext::{LinkInternals, LinkageInternals};
 use crate::{
     Dictionary, Language, LinkLabel, Relation, Sentence, Subscript, Word,
 };
+use crate::{c_str_ext::CStrPtr, relation};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
@@ -197,6 +197,17 @@ impl<'s> Linkage<'s> {
     /// [`links`](Self::links) to find every such link.
     pub fn link(&self, relation: Relation) -> Option<Link<'_>> {
         self.links().find(|link| link.relation() == Some(relation))
+    }
+
+    pub fn link_with_subscript_start(
+        &self,
+        r: Relation,
+        s: char,
+    ) -> Option<Link<'_>> {
+        self.links().find(|l| {
+            l.relation() == (Some(r))
+                && l.subscript().get(0).map(|c| c == s).unwrap_or(false)
+        })
     }
 
     /// The ASCII diagram link-parser prints, wrapped to `width` columns.

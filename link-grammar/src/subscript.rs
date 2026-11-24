@@ -1,6 +1,17 @@
-//! The lowercase part of a link label, packed into a number.
+//! The lowercase part of a link label, packed into a number, and the
+//! structs that name its letters.
+//!
+//! To name the letters of another relation, follow `subscript/README.md`.
 
 use std::fmt::{self, Write};
+
+pub use object::{Object, ObjectFlag, ObjectKind, ObjectUse};
+pub use subject::{Subject, SubjectConstraint, SubjectFlag, SubjectKind};
+
+#[cfg(all(test, feature = "bundled"))]
+mod coverage_tests;
+mod object;
+mod subject;
 
 /// The lowercase part of a link label, such as `p` in `MVp`, with up to 9
 /// positions. Each position holds a letter or a `*`, which matches any
@@ -19,6 +30,12 @@ use std::fmt::{self, Write};
 /// ```
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Subscript(u64);
+
+/// The letters one subscript position takes, named.
+pub(crate) trait SubscriptLetter: Sized {
+    /// The variant for `letter`, which is 0 for a `*`.
+    fn from_letter(letter: u8) -> Option<Self>;
+}
 
 /// The bits each position takes.
 const LETTER_BITS: usize = 7;

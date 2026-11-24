@@ -122,6 +122,20 @@ pub(crate) impl internals::Dictionary_s {
 
 #[ext(name = ConnectorDescriptor)]
 pub(crate) impl internals::condesc_struct {
+    /// The whole connector string, such as `Ss*t`.
+    #[cfg(test)]
+    fn connector(&self) -> &str {
+        // SAFETY: `more` and its `string` live as long as the dictionary.
+        unsafe { (*self.more).string.as_utf8() }
+    }
+
+    /// The connector's subscript, the same bits a link's subscript
+    /// takes from its two ends.
+    #[cfg(test)]
+    fn subscript(&self) -> Subscript {
+        Subscript::from_bits(self.lc_letters >> 1)
+    }
+
     /// The connector's uppercase part, such as `MV` in `MVp`.
     fn link_type_name(&self) -> &str {
         // SAFETY: `more` and its `string` live as long as the dictionary.
