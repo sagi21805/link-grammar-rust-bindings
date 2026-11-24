@@ -6,7 +6,9 @@ use link_grammar_sys as sys;
 use crate::c_str_ext::CStrPtr;
 #[cfg(feature = "bundled")]
 use crate::internals_ext::{LinkInternals, LinkageInternals};
-use crate::{Dictionary, Language, LinkLabel, Relation, Sentence, Word};
+use crate::{
+    Dictionary, Language, LinkLabel, Relation, Sentence, Subscript, Word,
+};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
@@ -77,6 +79,14 @@ impl<'l> Link<'l> {
         };
     }
 
+    /// The lowercase part of the link's label, such as `s*s` in `Ss*s`.
+    pub fn subscript(&self) -> Subscript {
+        #[cfg(feature = "bundled")]
+        return self.raw().subscript();
+        #[cfg(not(feature = "bundled"))]
+        return self.label().subscript();
+    }
+
     /// The label link-grammar prints for the link, such as `Ss*s`.
     pub fn label(&self) -> LinkLabel<'l> {
         #[cfg(feature = "bundled")]
@@ -110,13 +120,25 @@ impl fmt::Debug for Link<'_> {
     }
 }
 
-/// Links are equal when they join the same positions with the same
-/// label, so a link equals itself in another linkage of the same parse.
+/// Links are equal when they join the same positions with the same link
+/// type and subscript, so a link equals itself in another linkage of the
+/// same parse.
 impl PartialEq for Link<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.left == other.left
             && self.right == other.right
-            && self.label() == other.label()
+            && self.subscript() == other.subscript()
+            && self.has_link_type_of(other)
+    }
+}
+
+impl Link<'_> {
+    /// Whether the two links have the same link type.
+    fn has_link_type_of(&self, other: &Self) -> bool {
+        #[cfg(feature = "bundled")]
+        return self.raw().link_type() == other.raw().link_type();
+        #[cfg(not(feature = "bundled"))]
+        return self.label().link_type() == other.label().link_type();
     }
 }
 

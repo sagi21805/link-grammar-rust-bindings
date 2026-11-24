@@ -8,7 +8,7 @@ use link_grammar_sys::internals;
 
 use crate::c_str_ext::CStrPtr;
 use crate::link_types::LinkTypeId;
-use crate::{Dictionary, Linkage};
+use crate::{Dictionary, Linkage, Subscript};
 
 impl Linkage<'_> {
     /// The linkage's private fields.
@@ -48,6 +48,16 @@ pub(crate) impl internals::Link_s {
         LinkTypeId::new(self.left_end().uc_num)
     }
 
+    /// The OR of both ends' subscripts, the way `intersect_strings`
+    /// computes the label.
+    fn subscript(&self) -> Subscript {
+        let letters =
+            |end: &internals::condesc_struct| end.lc_letters >> 1;
+        Subscript::from_bits(
+            letters(self.left_end()) | letters(self.right_end()),
+        )
+    }
+
     /// The label, such as `Ss*s`.
     fn label(&self) -> &str {
         // SAFETY: `link_name` is a NUL-terminated string in the sentence's
@@ -60,6 +70,12 @@ pub(crate) impl internals::Link_s {
         // SAFETY: a link's connectors belong to the sentence, and their
         // descriptors to the dictionary.
         unsafe { &*(*self.lc).desc }
+    }
+
+    /// The descriptor of the link's right connector.
+    fn right_end(&self) -> &internals::condesc_struct {
+        // SAFETY: as in `left_end`.
+        unsafe { &*(*self.rc).desc }
     }
 }
 
