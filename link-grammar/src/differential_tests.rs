@@ -9,32 +9,20 @@ use crate::{Dictionary, Language, Linkage, Sentence, Verbosity, Word};
 
 #[test]
 fn numeric_readers_agree_with_the_printed_forms() {
-    assert_corpus_agrees(200);
-}
-
-#[test]
-#[ignore = "parses all 934 sentences, which takes half a minute"]
-fn numeric_readers_agree_with_the_printed_forms_on_the_whole_corpus() {
-    assert_corpus_agrees(usize::MAX);
-}
-
-/// Parses the first `count` sentences of the corpus and checks every
-/// linkage of each.
-fn assert_corpus_agrees(count: usize) {
     crate::set_verbosity(Verbosity::Silent);
     let dictionary =
         Dictionary::new(Language::English).expect("English is bundled");
-    for text in corpus().iter().take(count) {
-        let mut sentence = Sentence::new(&dictionary, text)
+    for text in corpus() {
+        let mut sentence = Sentence::new(&dictionary, &text)
             .expect("corpus text has no NUL");
         if sentence.parse().is_err() {
             continue;
         }
         for linkage in sentence.linkages() {
-            assert_links_agree(text, &linkage);
+            assert_links_agree(&text, &linkage);
             linkage
                 .words()
-                .for_each(|word| assert_word_agrees(text, word));
+                .for_each(|word| assert_word_agrees(&text, word));
         }
     }
 }

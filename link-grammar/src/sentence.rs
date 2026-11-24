@@ -50,11 +50,12 @@ impl<'d> Sentence<'d> {
         })
     }
 
-    /// Splits the sentence into words and finds its linkages, best first,
-    /// so [`linkage(0)`](Self::linkage) is the best one. When no linkage
-    /// connects every word, the linkages leave the fewest words unlinked
-    /// that they can. Returns how many linkages have no post-processing
-    /// violations.
+    /// Splits the sentence into words and finds its linkages with
+    /// link-grammar's default options, best first, so
+    /// [`linkage(0)`](Self::linkage) is the one link-parser shows first.
+    /// When no linkage connects every word, the linkages leave the fewest
+    /// words unlinked that they can. Returns how many linkages have no
+    /// post-processing violations.
     pub fn parse(&mut self) -> Result<usize> {
         self.linkages.clear();
         let mut options = ParseOptions::new();
@@ -62,11 +63,6 @@ impl<'d> Sentence<'d> {
         if valid == 0 {
             options.set_min_null_count(1);
             options.set_max_null_count(self.length());
-            valid = self.run_parse(&options)?;
-        }
-        if self.should_extract_every_linkage(&options) {
-            options.set_min_null_count(self.null_count());
-            options.set_linkage_limit(self.found());
             valid = self.run_parse(&options)?;
         }
         // `linkage_create` rewrites a linkage's words and links in place,
@@ -115,17 +111,6 @@ impl<'d> Sentence<'d> {
         }
     }
 
-    /// Whether the last parse extracted only a random sample of its
-    /// linkages, and extracting all of them stays within
-    /// [`MAX_EXACT_LINKAGES`].
-    fn should_extract_every_linkage(
-        &self,
-        options: &ParseOptions,
-    ) -> bool {
-        let found = self.found();
-        options.linkage_limit() < found && found <= MAX_EXACT_LINKAGES
-    }
-
     /// `linkage_create` for `index`, which is below [`kept`](Self::kept).
     fn create_linkage(
         &self,
@@ -144,11 +129,6 @@ impl<'d> Sentence<'d> {
 
     /// How many words link-grammar split the sentence into.
     fn length(&self) -> usize { self.count(sys::sentence_length) }
-
-    /// How many linkages the last parse counted.
-    fn found(&self) -> usize {
-        self.count(sys::sentence_num_linkages_found)
-    }
 
     /// How many linkages the last parse kept.
     fn kept(&self) -> usize {
@@ -180,7 +160,3 @@ impl Drop for Sentence<'_> {
         unsafe { sys::sentence_delete(self.raw.as_ptr()) };
     }
 }
-
-/// The most linkages [`Sentence::parse`] extracts to find the best one.
-/// Past it, the best linkage is the best of link-grammar's random sample.
-const MAX_EXACT_LINKAGES: usize = 50_000;

@@ -11,7 +11,7 @@ use link_grammar::{Dictionary, Language, Sentence, Verbosity};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     link_grammar::set_verbosity(Verbosity::Silent);
     let dictionary = Dictionary::new(Language::English)?;
-    for line in io::stdin().lock().lines() {
+    for line in io::stdin().lock().lines().take(1) {
         let mut sentence = Sentence::new(&dictionary, &line?)?;
         let found = sentence.parse()?;
         println!("Found {found} linkages");
