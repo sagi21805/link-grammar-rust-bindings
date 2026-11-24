@@ -28,10 +28,7 @@ pub struct Linkage<'s> {
 }
 
 /// A labelled link between two words of a [`Linkage`]. `left` and
-/// `right` are indices into [`Linkage::words`], and
-/// [`left_word`](Self::left_word) and [`right_word`](Self::right_word)
-/// look up the words at them. [`relation`](Self::relation) names what
-/// the label means.
+/// `right` index [`Linkage::words`].
 ///
 /// ```
 /// # use link_grammar::{Dictionary, Language, Relation, Sentence};
@@ -113,14 +110,12 @@ impl<'s> Linkage<'s> {
 
     /// The words of the linkage, left wall first.
     pub fn words(&self) -> impl ExactSizeIterator<Item = Word<'_>> {
-        // SAFETY: `raw` is a live linkage.
         let count = unsafe { sys::linkage_get_num_words(self.as_raw()) };
         (0..count).map(|index| self.word(index))
     }
 
     /// The links of the linkage.
     pub fn links(&self) -> impl ExactSizeIterator<Item = Link<'_>> {
-        // SAFETY: `raw` is a live linkage.
         let count = unsafe { sys::linkage_get_num_links(self.as_raw()) };
         (0..count).map(|index| self.link_at(index))
     }
@@ -193,7 +188,6 @@ pub struct Diagram<'l> {
 
 impl fmt::Display for Diagram<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // SAFETY: `linkage` is a live linkage.
         let raw = unsafe {
             sys::linkage_print_diagram(
                 self.linkage.as_raw(),

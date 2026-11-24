@@ -7,10 +7,8 @@ use crate::{Language, Link, Linkage, PartOfSpeech, Relation};
 ///
 /// The printed form is the word, a [`WordGuess`] mark in brackets when the
 /// dictionary had to guess, and a `.` with the dictionary entry's
-/// subscript: `lander[?].n`, `Mr..x`, `123[!]`. A word that a parse with
-/// nulls left unlinked prints in brackets, as `[the]`. A word borrows the
-/// linkage's string, and each method scans only the word's few bytes.
-/// [`links`](Self::links) gives the links at the word.
+/// subscript, as in `lander[?].n`, `Mr..x` and `123[!]`. A word that a
+/// parse with nulls left unlinked prints in brackets, as `[the]`.
 ///
 /// ```
 /// use link_grammar::{Dictionary, Language, Sentence, WordGuess};

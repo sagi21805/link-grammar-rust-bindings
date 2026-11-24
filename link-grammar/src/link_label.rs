@@ -3,8 +3,7 @@
 ///
 /// Labels only come from a parse, so each one has link-grammar's shape.
 /// The link type is uppercase letters and `_`, and the subscript is
-/// lowercase letters, digits and `*`. A label borrows the linkage's
-/// string, and splitting it scans only the label's few bytes.
+/// lowercase letters, digits and `*`.
 ///
 /// ```
 /// use link_grammar::{Dictionary, Language, Sentence};

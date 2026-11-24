@@ -20,7 +20,6 @@ impl ParseOptions {
     /// The most linkages a parse keeps. Values past `i32::MAX` keep
     /// `i32::MAX`.
     pub fn set_linkage_limit(&mut self, limit: usize) {
-        // SAFETY: `raw` is a live options object.
         unsafe {
             sys::parse_options_set_linkage_limit(
                 self.as_raw(),
@@ -32,7 +31,6 @@ impl ParseOptions {
     /// The most words a linkage may leave unlinked, so ungrammatical
     /// sentences still parse. The default is 0.
     pub fn set_max_null_count(&mut self, count: usize) {
-        // SAFETY: `raw` is a live options object.
         unsafe {
             sys::parse_options_set_max_null_count(
                 self.as_raw(),
@@ -42,11 +40,7 @@ impl ParseOptions {
     }
 
     /// Default options at `verbosity`, which also becomes link-grammar's
-    /// global level. The guard keeps [`set_verbosity`] from running
-    /// between `parse_options_create`, which resets the global, and the
-    /// write that restores it.
-    ///
-    /// [`set_verbosity`]: crate::set_verbosity
+    /// global level.
     pub(crate) fn with_verbosity(
         verbosity: &MutexGuard<'_, Verbosity>,
     ) -> Self {
@@ -70,7 +64,6 @@ impl ParseOptions {
 
     /// Sets the options' level and link-grammar's global level.
     fn write_verbosity(&self, verbosity: Verbosity) {
-        // SAFETY: `raw` is a live options object.
         unsafe {
             sys::parse_options_set_verbosity(
                 self.as_raw(),

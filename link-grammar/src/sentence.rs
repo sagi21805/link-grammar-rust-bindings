@@ -101,7 +101,6 @@ impl<'d> Sentence<'d> {
 
     /// How many words each of the best linkages leaves unlinked.
     pub fn null_count(&self) -> usize {
-        // SAFETY: `raw` is a live sentence.
         let count = unsafe { sys::sentence_null_count(self.as_raw()) };
         usize::try_from(count).expect("a null count is never negative")
     }
@@ -125,7 +124,6 @@ impl<'d> Sentence<'d> {
             count => usize::try_from(count)
                 .expect("sentence_parse returns -1, -2, -3 or a count"),
         };
-        // SAFETY: `raw` is a live sentence.
         let kept = unsafe {
             sys::sentence_num_linkages_post_processed(self.as_raw())
         };
