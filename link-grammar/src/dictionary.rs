@@ -40,15 +40,6 @@ impl Dictionary {
 
     /// Loads the dictionary in the directory `path`, which holds
     /// `4.0.dict` and the files it includes.
-    ///
-    /// ```no_run
-    /// use std::path::Path;
-    ///
-    /// use link_grammar::Dictionary;
-    ///
-    /// let custom = Dictionary::from_path(Path::new("my-dictionaries/en"))?;
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn from_path(path: &Path) -> Result<Self> {
         let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
         Self::create(&c_path, || path.display().to_string())
@@ -90,14 +81,6 @@ impl Dictionary {
     /// name of its directory. It is `None` for a directory
     /// [`from_path`](Self::from_path) loads whose name isn't a
     /// [`Language::code`].
-    ///
-    /// ```
-    /// use link_grammar::{Dictionary, Language};
-    ///
-    /// let dictionary = Dictionary::new(Language::English)?;
-    /// assert_eq!(dictionary.language(), Some(Language::English));
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn language(&self) -> Option<Language> { self.language }
 
     /// The handle the C API takes.

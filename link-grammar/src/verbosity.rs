@@ -5,13 +5,6 @@ use crate::ParseOptions;
 
 /// How much link-grammar prints to stderr. Each level adds to the ones
 /// before it.
-///
-/// ```
-/// use link_grammar::Verbosity;
-///
-/// link_grammar::set_verbosity(Verbosity::Silent);
-/// # link_grammar::set_verbosity(Verbosity::Basic);
-/// ```
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default,
 )]

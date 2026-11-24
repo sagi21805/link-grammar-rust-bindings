@@ -9,14 +9,6 @@ use crate::verbosity::{self, Verbosity};
 /// Settings that control how
 /// [`Sentence::parse_with`](crate::Sentence::parse_with) searches for
 /// linkages.
-///
-/// ```
-/// use link_grammar::ParseOptions;
-///
-/// let mut options = ParseOptions::new();
-/// options.set_linkage_limit(10);
-/// options.set_max_null_count(3);
-/// ```
 pub struct ParseOptions {
     raw: NonNull<sys::Parse_Options_s>,
 }

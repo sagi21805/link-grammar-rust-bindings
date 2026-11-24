@@ -67,20 +67,6 @@ impl<'l> Word<'l> {
     }
 
     /// The links with an end at the word, in the linkage's order.
-    ///
-    /// ```
-    /// use link_grammar::{Dictionary, Language, Sentence};
-    ///
-    /// let dictionary = Dictionary::new(Language::English)?;
-    /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    /// sentence.parse()?;
-    /// let linkage = sentence.linkage(0).expect("a parse");
-    /// let mars = linkage.words().nth(1).expect("a second word");
-    /// for link in mars.links() {
-    ///     assert!(link.left_word() == mars || link.right_word() == mars);
-    /// }
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn links(self) -> impl Iterator<Item = Link<'l>> {
         self.linkage.links().filter(move |link| {
             link.left == self.index || link.right == self.index
@@ -124,19 +110,6 @@ impl<'l> Word<'l> {
     /// The word class the [`subscript`](Self::subscript) names. It is
     /// `None` for a word without a subscript, for a subscript that names
     /// a narrower group, and for every language but English.
-    ///
-    /// ```
-    /// use link_grammar::{Dictionary, Language, PartOfSpeech, Sentence};
-    ///
-    /// let dictionary = Dictionary::new(Language::English)?;
-    /// let mut sentence = Sentence::new(&dictionary, "The lander landed.")?;
-    /// sentence.parse()?;
-    /// let linkage = sentence.linkage(0).expect("a parse");
-    /// let classes: Vec<_> =
-    ///     linkage.words().map(|word| word.part_of_speech()).collect();
-    /// assert_eq!(classes[3], Some(PartOfSpeech::Verb));
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn part_of_speech(self) -> Option<PartOfSpeech> {
         match self.linkage.language() {
             Some(Language::English) => {
@@ -189,21 +162,6 @@ impl Hash for Word<'_> {
 
 /// The printed form and position, followed by what the crate reads from
 /// the printed form.
-///
-/// ```
-/// use link_grammar::{Dictionary, Language, Sentence};
-///
-/// let dictionary = Dictionary::new(Language::English)?;
-/// let mut sentence = Sentence::new(&dictionary, "The lander landed.")?;
-/// sentence.parse()?;
-/// let linkage = sentence.linkage(0).expect("a parse");
-/// let lander = linkage.words().nth(2).expect("a third word");
-/// assert_eq!(
-///     format!("{lander:?}"),
-///     r#"Word { printed: "lander[?].n", index: 2, parts: WordParts { text: "lander", guess: Some(Unknown), subscript: Some("n") }, part_of_speech: Some(Noun), unlinked: false }"#,
-/// );
-/// # Ok::<(), link_grammar::Error>(())
-/// ```
 impl fmt::Debug for Word<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Word")

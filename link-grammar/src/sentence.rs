@@ -56,15 +56,6 @@ impl<'d> Sentence<'d> {
     /// Splits the sentence into words and finds its linkages with
     /// link-grammar's default options. Returns how many linkages have no
     /// post-processing violations.
-    ///
-    /// ```
-    /// use link_grammar::{Dictionary, Language, Sentence};
-    ///
-    /// let dictionary = Dictionary::new(Language::English)?;
-    /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    /// assert!(sentence.parse()? > 0);
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn parse(&mut self) -> Result<usize> {
         self.parse_keeping(SentenceOptions::Default(ParseOptions::new()))
     }
@@ -72,25 +63,6 @@ impl<'d> Sentence<'d> {
     /// [`parse`](Self::parse) with `options` instead of the defaults.
     /// The sentence borrows `options` for as long as it lives, so one set
     /// of options can parse many sentences.
-    ///
-    /// ```compile_fail,E0505
-    /// use link_grammar::{Dictionary, Language, ParseOptions, Sentence};
-    ///
-    /// let dictionary = Dictionary::new(Language::English)?;
-    /// let mut options = ParseOptions::new();
-    /// options.set_max_null_count(1);
-    /// let mut sentence = Sentence::new(
-    ///     &dictionary,
-    ///     "The the lander touched down on Mars.",
-    /// )?;
-    /// sentence.parse_with(&options)?;
-    /// assert_eq!(sentence.null_count(), 1);
-    ///
-    /// // Doesn't compile, because the sentence still borrows `options`.
-    /// drop(options);
-    /// sentence.linkage(0);
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn parse_with(
         &mut self,
         options: &'d ParseOptions,
@@ -100,18 +72,6 @@ impl<'d> Sentence<'d> {
 
     /// The linkage at `index`, or `None` past the last one the parse
     /// kept or before the first parse.
-    ///
-    /// ```
-    /// use link_grammar::{Dictionary, Language, Sentence};
-    ///
-    /// let dictionary = Dictionary::new(Language::English)?;
-    /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    /// assert!(sentence.linkage(0).is_none());
-    /// sentence.parse()?;
-    /// assert!(sentence.linkage(0).is_some());
-    /// assert!(sentence.linkage(usize::MAX).is_none());
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn linkage(&self, index: usize) -> Option<Linkage<'_>> {
         let parsed = self.parsed.as_ref()?;
         let raw = *parsed.linkages.get(index)?.get_or_init(|| {

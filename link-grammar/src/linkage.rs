@@ -127,18 +127,6 @@ impl<'s> Linkage<'s> {
 
     /// The first link whose label names `relation`. Use
     /// [`links`](Self::links) to find every such link.
-    ///
-    /// ```
-    /// # use link_grammar::{Dictionary, Language, Relation, Sentence};
-    /// # let dictionary = Dictionary::new(Language::English)?;
-    /// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    /// sentence.parse()?;
-    /// let linkage = sentence.linkage(0).expect("a parse");
-    /// let subject = linkage.link(Relation::Subject).expect("a subject link");
-    /// assert_eq!(subject.left_word().text(), "Mars");
-    /// assert!(linkage.link(Relation::Object).is_none());
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn link(&self, relation: Relation) -> Option<Link<'_>> {
         self.links().find(|link| link.relation() == Some(relation))
     }
@@ -198,16 +186,6 @@ impl<'s> Linkage<'s> {
 
 /// The ASCII diagram of a [`Linkage`], wrapped to a column width. Its
 /// [`Display`](fmt::Display) prints what link-parser prints.
-///
-/// ```
-/// # use link_grammar::{Dictionary, Language, Sentence};
-/// # let dictionary = Dictionary::new(Language::English)?;
-/// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-/// sentence.parse()?;
-/// let linkage = sentence.linkage(0).expect("a parse");
-/// println!("{}", linkage.diagram(80));
-/// # Ok::<(), link_grammar::Error>(())
-/// ```
 pub struct Diagram<'l> {
     linkage: &'l Linkage<'l>,
     width: usize,

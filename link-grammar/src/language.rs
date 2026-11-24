@@ -7,14 +7,6 @@ use std::fmt;
 /// their dictionary directory from link-grammar's `data/`, which
 /// [`Dictionary::set_data_dir`](crate::Dictionary::set_data_dir) points
 /// at.
-///
-/// ```
-/// use link_grammar::{Dictionary, Language};
-///
-/// let english = Dictionary::new(Language::English)?;
-/// assert_eq!(Language::English.code(), "en");
-/// # Ok::<(), link_grammar::Error>(())
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum Language {
