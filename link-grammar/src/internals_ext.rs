@@ -8,7 +8,7 @@ use link_grammar_sys::internals;
 
 use crate::c_str_ext::CStrPtr;
 use crate::link_types::LinkTypeId;
-use crate::{Dictionary, Linkage, Subscript};
+use crate::{Dictionary, Linkage, Subscript, WordGuess};
 
 impl Linkage<'_> {
     /// The linkage's private fields.
@@ -37,6 +37,29 @@ pub(crate) impl internals::Linkage_s {
         // writes after `linkage_create`.
         unsafe {
             slice::from_raw_parts(self.link_array, self.num_links as usize)
+        }
+    }
+
+    /// The disjunct each word used, or `None` for an unlinked word.
+    fn chosen_disjuncts(&self) -> &[Option<&internals::Disjunct_struct>] {
+        // SAFETY: `chosen_disjuncts` holds a pointer or NULL per word, and
+        // `Option<&T>` has the layout of a nullable pointer.
+        unsafe {
+            slice::from_raw_parts(
+                self.chosen_disjuncts.cast(),
+                self.num_words,
+            )
+        }
+    }
+
+    /// The word-graph node of each word.
+    fn word_nodes(&self) -> &[&internals::Gword_struct] {
+        // SAFETY: `wg_path_display` holds a node per word.
+        unsafe {
+            slice::from_raw_parts(
+                self.wg_path_display.cast(),
+                self.num_words,
+            )
         }
     }
 }
@@ -107,5 +130,33 @@ pub(crate) impl internals::condesc_struct {
         // SAFETY: as above, and the string is NUL-terminated.
         let name = unsafe { more.string.as_utf8() };
         &name[start..start + usize::from(more.uc_length)]
+    }
+}
+
+#[ext(name = DisjunctInternals)]
+pub(crate) impl internals::Disjunct_struct {
+    /// The dictionary entry the disjunct came from, such as `dog\x03n`.
+    fn entry(&self) -> &str {
+        // SAFETY: a parsed disjunct keeps its entry in `word_string`, a
+        // NUL-terminated string in the dictionary or the sentence.
+        unsafe {
+            self.__bindgen_anon_1.__bindgen_anon_1.word_string.as_utf8()
+        }
+    }
+}
+
+#[ext(name = WordNode)]
+pub(crate) impl internals::Gword_struct {
+    /// Why link-grammar guessed the word, by the rule it prints guess
+    /// marks with (`linkage/linkage.c:635`).
+    fn guess(&self) -> Option<WordGuess> {
+        match self.status & internals::WS_GUESS {
+            0 if self.status & internals::WS_INDICT != 0 => None,
+            0 => Some(WordGuess::Unknown),
+            internals::WS_SPELL => Some(WordGuess::Spelling),
+            internals::WS_RUNON => Some(WordGuess::RunOn),
+            internals::WS_REGEX => Some(WordGuess::Regex),
+            _ => unreachable!("link-grammar sets one guess bit at most"),
+        }
     }
 }

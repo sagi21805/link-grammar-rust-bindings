@@ -1,6 +1,13 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+#[cfg(feature = "bundled")]
+use link_grammar_sys::internals;
+
+#[cfg(feature = "bundled")]
+use crate::internals_ext::{
+    DisjunctInternals, LinkageInternals, WordNode,
+};
 use crate::{Language, Link, Linkage, PartOfSpeech, Relation};
 
 /// A word of a [`Linkage`](crate::Linkage), as link-grammar prints it.
@@ -96,14 +103,40 @@ impl<'l> Word<'l> {
 
     /// The word itself, without its guess mark or subscript, such as
     /// `lander` in `lander[?].n`.
-    pub fn text(self) -> &'l str { self.parts().text }
+    pub fn text(self) -> &'l str {
+        #[cfg(feature = "bundled")]
+        return match self.entry() {
+            Some(entry) => entry
+                .rsplit_once(SUBSCRIPT_MARK)
+                .map_or(entry, |(text, _)| text),
+            None => self.unlinked_inner().unwrap_or(self.printed),
+        };
+        #[cfg(not(feature = "bundled"))]
+        return self.parts().text;
+    }
 
     /// The subscript of the dictionary entry the word matched, such as `n`
     /// in `lander[?].n`.
-    pub fn subscript(self) -> Option<&'l str> { self.parts().subscript }
+    pub fn subscript(self) -> Option<&'l str> {
+        #[cfg(feature = "bundled")]
+        return self
+            .entry()?
+            .rsplit_once(SUBSCRIPT_MARK)
+            .map(|(_, subscript)| subscript)
+            .filter(|&subscript| subscript != IDIOM_SUBSCRIPT);
+        #[cfg(not(feature = "bundled"))]
+        return self.parts().subscript;
+    }
 
     /// Why the dictionary guessed the word, if it did.
-    pub fn guess(self) -> Option<WordGuess> { self.parts().guess }
+    pub fn guess(self) -> Option<WordGuess> {
+        #[cfg(feature = "bundled")]
+        return self.entry().and_then(|_| {
+            self.linkage.internals().word_nodes()[self.index].guess()
+        });
+        #[cfg(not(feature = "bundled"))]
+        return self.parts().guess;
+    }
 
     /// The word class the [`subscript`](Self::subscript) names. It is
     /// `None` for a word without a subscript, for a subscript that names
@@ -119,7 +152,21 @@ impl<'l> Word<'l> {
 
     /// Whether the linkage leaves the word unlinked, which happens only
     /// when no linkage connects every word.
-    pub fn is_unlinked(self) -> bool { self.unlinked_inner().is_some() }
+    pub fn is_unlinked(self) -> bool {
+        #[cfg(feature = "bundled")]
+        return self.entry().is_none();
+        #[cfg(not(feature = "bundled"))]
+        return self.unlinked_inner().is_some();
+    }
+
+    /// The dictionary entry the word used, such as `dog\x03n`, or `None`
+    /// for an unlinked word.
+    #[cfg(feature = "bundled")]
+    fn entry(self) -> Option<&'l str> {
+        let disjunct =
+            self.linkage.internals().chosen_disjuncts()[self.index]?;
+        Some(disjunct.entry())
+    }
 
     /// The printed form without its brackets, if the word is unlinked.
     fn unlinked_inner(self) -> Option<&'l str> {
@@ -130,6 +177,7 @@ impl<'l> Word<'l> {
     }
 
     /// The printed form split into the word, the guess and the subscript.
+    #[cfg(not(feature = "bundled"))]
     fn parts(self) -> WordParts<'l> {
         let printed = self.unlinked_inner().unwrap_or(self.printed);
         WordParts::with_guess(printed)
@@ -156,28 +204,39 @@ impl Hash for Word<'_> {
     }
 }
 
-/// The printed form and position, followed by what the crate reads from
-/// the printed form.
+/// The printed form and position, followed by what the crate reads about
+/// the word.
 impl fmt::Debug for Word<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Word")
             .field("printed", &self.printed)
             .field("index", &self.index)
-            .field("parts", &self.parts())
+            .field("text", &self.text())
+            .field("guess", &self.guess())
+            .field("subscript", &self.subscript())
             .field("part_of_speech", &self.part_of_speech())
             .field("unlinked", &self.is_unlinked())
             .finish()
     }
 }
 
+/// The mark between a dictionary entry's word and its subscript.
+#[cfg(feature = "bundled")]
+const SUBSCRIPT_MARK: char = internals::SUBSCRIPT_MARK as char;
+
+/// The subscript link-grammar gives idiom words, which it doesn't print.
+#[cfg(feature = "bundled")]
+const IDIOM_SUBSCRIPT: &str = "_I";
+
 /// The pieces of a printed word.
-#[derive(Debug)]
+#[cfg(not(feature = "bundled"))]
 struct WordParts<'l> {
     text: &'l str,
     guess: Option<WordGuess>,
     subscript: Option<&'l str>,
 }
 
+#[cfg(not(feature = "bundled"))]
 impl<'l> WordParts<'l> {
     /// `text[mark…]` or `text[mark…].subscript`. The brackets may hold a
     /// regex name after the mark.
@@ -222,6 +281,7 @@ impl<'l> WordParts<'l> {
     }
 }
 
+#[cfg(not(feature = "bundled"))]
 impl WordGuess {
     /// The guess that prints `mark`, one of `!`, `~`, `&` and `?`.
     fn from_mark(mark: char) -> Option<Self> {
