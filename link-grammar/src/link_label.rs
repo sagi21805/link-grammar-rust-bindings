@@ -1,5 +1,3 @@
-use crate::{Language, Relation};
-
 /// A link's label, such as `MVp`, which is the [`LinkType`] `MV` followed
 /// by the [`Subscript`] `p`.
 ///
@@ -25,20 +23,13 @@ use crate::{Language, Relation};
 /// # Ok::<(), link_grammar::Error>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LinkLabel<'l> {
-    label: &'l str,
-    /// The language of the dictionary that made the link.
-    language: Option<Language>,
-}
+pub struct LinkLabel<'l>(&'l str);
 
-/// The uppercase part of a [`LinkLabel`], such as `MV`, which names the
-/// grammatical [`Relation`].
+/// The uppercase part of a [`LinkLabel`], such as `MV`.
+/// [`Link::relation`](crate::Link::relation) reads it as a grammatical
+/// [`Relation`](crate::Relation).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LinkType<'l> {
-    link_type: &'l str,
-    /// The language of the dictionary that made the link.
-    language: Option<Language>,
-}
+pub struct LinkType<'l>(&'l str);
 
 /// The lowercase part of a [`LinkLabel`], such as `p`, which narrows its
 /// [`LinkType`]. Each `*` matches any letter in that position. It is empty
@@ -47,9 +38,9 @@ pub struct LinkType<'l> {
 pub struct Subscript<'l>(&'l str);
 
 impl<'l> LinkLabel<'l> {
-    /// Wraps a label that a dictionary of `language` computed.
-    pub(crate) fn new(label: &'l str, language: Option<Language>) -> Self {
-        let label = Self { label, language };
+    /// Wraps a label that link-grammar computed.
+    pub(crate) fn new(label: &'l str) -> Self {
+        let label = Self(label);
         debug_assert!(
             label.is_well_formed(),
             "link-grammar returned the malformed label {label}"
@@ -58,12 +49,7 @@ impl<'l> LinkLabel<'l> {
     }
 
     /// The uppercase part, such as `MV` in `MVp`.
-    pub fn link_type(self) -> LinkType<'l> {
-        LinkType {
-            link_type: self.split().0,
-            language: self.language,
-        }
-    }
+    pub fn link_type(self) -> LinkType<'l> { LinkType(self.split().0) }
 
     /// The lowercase part, such as `p` in `MVp`.
     pub fn subscript(self) -> Subscript<'l> { Subscript(self.split().1) }
@@ -71,10 +57,10 @@ impl<'l> LinkLabel<'l> {
     /// The label split where its subscript starts.
     fn split(self) -> (&'l str, &'l str) {
         let subscript_start = self
-            .label
+            .0
             .find(|c| !is_link_type_char(c))
-            .unwrap_or(self.label.len());
-        self.label.split_at(subscript_start)
+            .unwrap_or(self.0.len());
+        self.0.split_at(subscript_start)
     }
 
     /// Whether the label is a link type followed by a subscript.
@@ -87,36 +73,7 @@ impl<'l> LinkLabel<'l> {
     }
 }
 
-impl LinkType<'_> {
-    /// The grammatical relation the link type names. It is `None` for
-    /// every language but English.
-    ///
-    /// ```
-    /// use link_grammar::{Dictionary, Language, Relation, Sentence};
-    ///
-    /// let dictionary = Dictionary::new(Language::English)?;
-    /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    /// sentence.parse()?;
-    /// let linkage = sentence.linkage(0).expect("a parse");
-    /// let words: Vec<_> = linkage.words().collect();
-    /// let subject = linkage
-    ///     .links()
-    ///     .find(|link| link.label.link_type().relation() == Some(Relation::Subject))
-    ///     .expect("a subject link");
-    /// assert_eq!(words[subject.left].text(), "Mars");
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
-    pub fn relation(self) -> Option<Relation> {
-        match self.language {
-            Some(Language::English) => {
-                Relation::from_english_link_type(self.link_type)
-            }
-            _ => None,
-        }
-    }
-}
-
-borrowed_str!(LinkLabel.label, LinkType.link_type, Subscript.0);
+borrowed_str!(LinkLabel.0, LinkType.0, Subscript.0);
 
 /// Whether `c` belongs in a link type.
 fn is_link_type_char(c: char) -> bool {

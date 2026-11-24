@@ -1,12 +1,11 @@
 use std::ffi::CStr;
 use std::fmt;
-use std::marker::PhantomData;
-use std::ptr::{self, NonNull};
+use std::ptr::NonNull;
 
 use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
-use crate::{Language, LinkLabel, Relation, Word};
+use crate::{Language, LinkLabel, Relation, Sentence, Word};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
@@ -25,9 +24,7 @@ use crate::{Language, LinkLabel, Relation, Word};
 /// ```
 pub struct Linkage<'s> {
     raw: NonNull<sys::Linkage_s>,
-    /// The language of the sentence's dictionary.
-    language: Option<Language>,
-    sentence: PhantomData<&'s ()>,
+    sentence: &'s Sentence<'s>,
 }
 
 /// A labelled link between two words of a [`Linkage`]. `left` and
@@ -58,15 +55,24 @@ pub struct Link<'l> {
 
 impl<'l> Link<'l> {
     /// The word at the link's left end.
-    pub fn left_word(&self) -> Word<'l> { self.linkage.word(self.left) }
+    pub fn left_word(&self) -> Word<'l> {
+        self.linkage.word(self.left)
+    }
 
     /// The word at the link's right end.
-    pub fn right_word(&self) -> Word<'l> { self.linkage.word(self.right) }
+    pub fn right_word(&self) -> Word<'l> {
+        self.linkage.word(self.right)
+    }
 
-    /// The relation the label's link type names, as
-    /// [`LinkType::relation`](crate::LinkType::relation) gives it.
+    /// The relation the label's [`LinkType`](crate::LinkType) names. It
+    /// is `None` for every language but English.
     pub fn relation(&self) -> Option<Relation> {
-        self.label.link_type().relation()
+        match self.linkage.language() {
+            Some(Language::English) => Relation::from_english_link_type(
+                self.label.link_type().as_str(),
+            ),
+            _ => None,
+        }
     }
 }
 
@@ -83,12 +89,11 @@ impl fmt::Debug for Link<'_> {
     }
 }
 
-/// Links are equal when they join the same words of the same linkage
-/// with the same label.
+/// Links are equal when they join the same positions with the same
+/// label, so a link equals itself in another linkage of the same parse.
 impl PartialEq for Link<'_> {
     fn eq(&self, other: &Self) -> bool {
-        ptr::eq(self.linkage, other.linkage)
-            && self.left == other.left
+        self.left == other.left
             && self.right == other.right
             && self.label == other.label
     }
@@ -97,22 +102,17 @@ impl PartialEq for Link<'_> {
 impl Eq for Link<'_> {}
 
 impl<'s> Linkage<'s> {
-    /// Wraps a handle from `linkage_create` for a sentence parsed with a
-    /// dictionary of `language`.
+    /// Wraps a handle from `linkage_create` for `sentence`. The borrow
+    /// keeps `sentence` from being reparsed while the linkage lives.
     ///
     /// # Safety
     ///
-    /// `raw` came from `linkage_create` for a sentence that outlives `'s`
-    /// and isn't reparsed during it.
+    /// `raw` came from `linkage_create` for `sentence`.
     pub(crate) unsafe fn from_raw(
         raw: NonNull<sys::Linkage_s>,
-        language: Option<Language>,
+        sentence: &'s Sentence<'s>,
     ) -> Self {
-        Self {
-            raw,
-            language,
-            sentence: PhantomData,
-        }
+        Self { raw, sentence }
     }
 
     /// The words of the linkage, left wall first.
@@ -171,7 +171,6 @@ impl<'s> Linkage<'s> {
         let label = unsafe {
             LinkLabel::new(
                 sys::linkage_get_link_label(raw, index).as_utf8(),
-                self.language,
             )
         };
         Link {
@@ -193,10 +192,14 @@ impl<'s> Linkage<'s> {
     }
 
     /// The language of the sentence's dictionary.
-    pub(crate) fn language(&self) -> Option<Language> { self.language }
+    pub(crate) fn language(&self) -> Option<Language> {
+        self.sentence.dictionary().language()
+    }
 
     /// The handle the C API takes.
-    fn as_raw(&self) -> sys::Linkage { self.raw.as_ptr() }
+    fn as_raw(&self) -> sys::Linkage {
+        self.raw.as_ptr()
+    }
 }
 
 /// The ASCII diagram of a [`Linkage`], wrapped to a column width. Its
