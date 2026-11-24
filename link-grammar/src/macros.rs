@@ -26,9 +26,9 @@ macro_rules! borrowed_str {
     )*};
 }
 
-/// An enum whose variants each stand for one string, with a `from_table`
-/// lookup from the string to the variant, written as `"S" => Subject`.
-macro_rules! relations {
+/// An enum whose variants each stand for one code, written as
+/// `"en" => English`, with lookups both ways.
+macro_rules! coded_enum {
     (
         $(#[$attr:meta])*
         pub enum $name:ident {
@@ -41,8 +41,15 @@ macro_rules! relations {
         }
 
         impl $name {
+            /// The code the variant stands for.
+            pub fn code(self) -> &'static str {
+                match self {
+                    $(Self::$variant => $code,)*
+                }
+            }
+
             /// The variant that stands for `code`, if one does.
-            fn from_table(code: &str) -> Option<Self> {
+            pub(crate) fn from_code(code: &str) -> Option<Self> {
                 match code {
                     $($code => Some(Self::$variant),)*
                     _ => None,

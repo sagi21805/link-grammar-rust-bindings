@@ -5,6 +5,7 @@ use std::sync::Mutex;
 
 use link_grammar_sys as sys;
 
+use crate::c_str_ext::CStrPtr;
 use crate::{Error, Language, Result};
 
 /// The grammar and word list of one language.
@@ -35,7 +36,8 @@ impl Dictionary {
     /// [`set_data_dir`](Self::set_data_dir), then the dictionaries this
     /// crate ships, then `./data`.
     pub fn new(language: Language) -> Result<Self> {
-        Self::create(language.c_code(), || language.code().to_owned())
+        let code = CString::new(language.code())?;
+        Self::create(&code, || language.code().to_owned())
     }
 
     /// Loads the dictionary in the directory `path`, which holds
@@ -58,9 +60,8 @@ impl Dictionary {
         let raw = NonNull::new(raw)
             .ok_or_else(|| Error::DictionaryNotFound(describe()))?;
         // SAFETY: `raw` is a live dictionary, which owns the string.
-        let code = unsafe {
-            CStr::from_ptr(sys::dictionary_get_lang(raw.as_ptr()))
-        };
+        let code =
+            unsafe { sys::dictionary_get_lang(raw.as_ptr()).as_utf8() };
         Ok(Self {
             raw,
             language: Language::from_code(code),
