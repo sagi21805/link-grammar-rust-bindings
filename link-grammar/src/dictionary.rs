@@ -1,4 +1,4 @@
-use std::ffi::{CStr, CString};
+use std::ffi::{CString, OsStr};
 use std::path::Path;
 use std::ptr::NonNull;
 use std::sync::Mutex;
@@ -36,29 +36,25 @@ impl Dictionary {
     /// [`set_data_dir`](Self::set_data_dir), then the dictionaries this
     /// crate ships, then `./data`.
     pub fn new(language: Language) -> Result<Self> {
-        let code = CString::new(language.code())?;
-        Self::create(&code, || language.code().to_owned())
+        Self::create(OsStr::new(language.code()))
     }
 
     /// Loads the dictionary in the directory `path`, which holds
     /// `4.0.dict` and the files it includes.
     pub fn from_path(path: &Path) -> Result<Self> {
-        let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
-        Self::create(&c_path, || path.display().to_string())
+        Self::create(path.as_os_str())
     }
 
     /// Loads the dictionary that `dictionary_create_lang` finds for
-    /// `name`, a language code or a path. `describe` names it in the
-    /// error.
-    fn create(
-        name: &CStr,
-        describe: impl FnOnce() -> String,
-    ) -> Result<Self> {
+    /// `name`, a language code or a path.
+    fn create(name: &OsStr) -> Result<Self> {
+        let c_name = CString::new(name.as_encoded_bytes())?;
         let _guard = DATA_DIR_LOCK.lock().expect("no panic while locked");
-        // SAFETY: `name` is NUL-terminated and outlives the call.
-        let raw = unsafe { sys::dictionary_create_lang(name.as_ptr()) };
-        let raw = NonNull::new(raw)
-            .ok_or_else(|| Error::DictionaryNotFound(describe()))?;
+        // SAFETY: `c_name` is NUL-terminated and outlives the call.
+        let raw = unsafe { sys::dictionary_create_lang(c_name.as_ptr()) };
+        let raw = NonNull::new(raw).ok_or_else(|| {
+            Error::DictionaryNotFound(name.display().to_string())
+        })?;
         // SAFETY: `raw` is a live dictionary, which owns the string.
         let code =
             unsafe { sys::dictionary_get_lang(raw.as_ptr()).as_utf8() };
