@@ -71,12 +71,19 @@ impl<'l> Link<'l> {
             .link_types()
             .relation(self.raw().link_type());
         #[cfg(not(feature = "bundled"))]
-        return match self.linkage.language() {
+        return self.relation_from_label();
+    }
+
+    /// The relation the label's link type names, read from the printed
+    /// label.
+    #[cfg(any(test, not(feature = "bundled")))]
+    pub(crate) fn relation_from_label(&self) -> Option<Relation> {
+        match self.linkage.language() {
             Some(Language::English) => Relation::from_english_link_type(
                 self.label().link_type().as_str(),
             ),
             _ => None,
-        };
+        }
     }
 
     /// The lowercase part of the link's label, such as `s*s` in `Ss*s`.

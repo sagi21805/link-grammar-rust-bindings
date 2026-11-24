@@ -25,6 +25,8 @@ mod macros;
 
 mod c_str_ext;
 mod dictionary;
+#[cfg(all(test, feature = "bundled"))]
+mod differential_tests;
 mod error;
 #[cfg(feature = "bundled")]
 mod internals_ext;
