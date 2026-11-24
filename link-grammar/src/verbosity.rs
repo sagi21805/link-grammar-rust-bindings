@@ -1,4 +1,3 @@
-use std::ffi::c_int;
 use std::sync::{Mutex, MutexGuard};
 
 use crate::parse_options::ParseOptions;
@@ -33,11 +32,6 @@ pub fn set_verbosity(verbosity: Verbosity) {
     // `parse_options_set_verbosity` is the only way to write the global,
     // and it needs an options object.
     drop(ParseOptions::with_verbosity(&level));
-}
-
-impl Verbosity {
-    /// The level the C API takes.
-    pub(crate) fn as_raw(self) -> c_int { self as c_int }
 }
 
 /// The level [`set_verbosity`] chose. Holding the guard keeps it from

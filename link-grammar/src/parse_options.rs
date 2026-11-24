@@ -30,7 +30,7 @@ impl ParseOptions {
         unsafe {
             sys::parse_options_set_verbosity(
                 raw.as_ptr(),
-                verbosity.as_raw(),
+                **verbosity as c_int,
             )
         };
         Self { raw }

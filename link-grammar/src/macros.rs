@@ -16,10 +16,6 @@ macro_rules! borrowed_str {
             }
         }
 
-        impl PartialEq<str> for $ty<'_> {
-            fn eq(&self, other: &str) -> bool { self.$field == other }
-        }
-
         impl PartialEq<&str> for $ty<'_> {
             fn eq(&self, other: &&str) -> bool { self.$field == *other }
         }
