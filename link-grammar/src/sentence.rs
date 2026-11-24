@@ -131,7 +131,7 @@ impl<'d> Sentence<'d> {
         });
         // SAFETY: `raw` is a linkage of this sentence, and the returned
         // `Linkage` borrows `self`, so no reparse happens while it lives.
-        Some(unsafe { Linkage::from_raw(raw, self.dictionary.language()) })
+        Some(unsafe { Linkage::from_raw(raw, self) })
     }
 
     /// Every linkage the parse kept, best first.
@@ -179,6 +179,9 @@ impl<'d> Sentence<'d> {
         });
         Ok(valid)
     }
+
+    /// The dictionary the sentence is parsed with.
+    pub(crate) fn dictionary(&self) -> &'d Dictionary { self.dictionary }
 
     /// The handle the C API takes.
     fn as_raw(&self) -> sys::Sentence { self.raw.as_ptr() }

@@ -2,12 +2,12 @@ relations! {
     /// The grammatical relation that an English [`LinkType`] names, such
     /// as [`Subject`](Self::Subject) for `S`.
     ///
-    /// [`LinkType::relation`] gives a link's relation. Each variant's doc
+    /// [`Link::relation`] gives a link's relation. Each variant's doc
     /// starts with its link type, and the [English Link Documentation]
     /// describes each one with examples.
     ///
     /// [`LinkType`]: crate::LinkType
-    /// [`LinkType::relation`]: crate::LinkType::relation
+    /// [`Link::relation`]: crate::Link::relation
     /// [English Link Documentation]: https://opencog.github.io/link-grammar-website/dict/index.html
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     #[non_exhaustive]

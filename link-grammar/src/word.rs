@@ -1,6 +1,7 @@
 use std::fmt;
+use std::hash::{Hash, Hasher};
 
-use crate::{Language, PartOfSpeech};
+use crate::{Language, Link, Linkage, PartOfSpeech, Relation};
 
 /// A word of a [`Linkage`](crate::Linkage), as link-grammar prints it.
 ///
@@ -9,6 +10,7 @@ use crate::{Language, PartOfSpeech};
 /// subscript: `lander[?].n`, `Mr..x`, `123[!]`. A word that a parse with
 /// nulls left unlinked prints in brackets, as `[the]`. A word borrows the
 /// linkage's string, and each method scans only the word's few bytes.
+/// [`links`](Self::links) gives the links at the word.
 ///
 /// ```
 /// use link_grammar::{Dictionary, Language, Sentence, WordGuess};
@@ -25,11 +27,12 @@ use crate::{Language, PartOfSpeech};
 /// assert_eq!(words[4].guess(), Some(WordGuess::Regex));
 /// # Ok::<(), link_grammar::Error>(())
 /// ```
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy)]
 pub struct Word<'l> {
     printed: &'l str,
-    /// The language of the dictionary that parsed the word.
-    language: Option<Language>,
+    /// The word's position in `linkage`, with the left wall at 0.
+    index: usize,
+    linkage: &'l Linkage<'l>,
 }
 
 /// Why link-grammar guessed a [`Word`] instead of finding it in the
@@ -50,12 +53,61 @@ pub enum WordGuess {
 }
 
 impl<'l> Word<'l> {
-    /// Wraps a word that a dictionary of `language` printed.
+    /// Wraps the word `linkage` printed at `index`.
     pub(crate) fn new(
         printed: &'l str,
-        language: Option<Language>,
+        index: usize,
+        linkage: &'l Linkage<'l>,
     ) -> Self {
-        Self { printed, language }
+        Self {
+            printed,
+            index,
+            linkage,
+        }
+    }
+
+    /// The links with an end at the word, in the linkage's order.
+    ///
+    /// ```
+    /// use link_grammar::{Dictionary, Language, Sentence};
+    ///
+    /// let dictionary = Dictionary::new(Language::English)?;
+    /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
+    /// sentence.parse()?;
+    /// let linkage = sentence.linkage(0).expect("a parse");
+    /// let mars = linkage.words().nth(1).expect("a second word");
+    /// for link in mars.links() {
+    ///     assert!(link.left_word() == mars || link.right_word() == mars);
+    /// }
+    /// # Ok::<(), link_grammar::Error>(())
+    /// ```
+    pub fn links(self) -> impl Iterator<Item = Link<'l>> {
+        self.linkage.links().filter(move |link| {
+            link.left == self.index || link.right == self.index
+        })
+    }
+
+    /// The first link at the word whose label names `relation`. Use
+    /// [`links`](Self::links) to find every such link.
+    ///
+    /// ```
+    /// use link_grammar::{Dictionary, Language, Relation, Sentence};
+    ///
+    /// let dictionary = Dictionary::new(Language::English)?;
+    /// let mut sentence =
+    ///     Sentence::new(&dictionary, "The rover drilled the rock slowly.")?;
+    /// sentence.parse()?;
+    /// let linkage = sentence.linkage(0).expect("a parse");
+    /// let object = linkage.link(Relation::Object).expect("an object link");
+    /// let verb = object.left_word();
+    /// assert_eq!(verb.text(), "drilled");
+    /// let manner =
+    ///     verb.link(Relation::VerbModifier).expect("a verb modifier link");
+    /// assert_eq!(manner.right_word().text(), "slowly");
+    /// # Ok::<(), link_grammar::Error>(())
+    /// ```
+    pub fn link(self, relation: Relation) -> Option<Link<'l>> {
+        self.links().find(|link| link.relation() == Some(relation))
     }
 
     /// The word itself, without its guess mark or subscript, such as
@@ -86,7 +138,7 @@ impl<'l> Word<'l> {
     /// # Ok::<(), link_grammar::Error>(())
     /// ```
     pub fn part_of_speech(self) -> Option<PartOfSpeech> {
-        match self.language {
+        match self.linkage.language() {
             Some(Language::English) => {
                 PartOfSpeech::from_english_subscript(self.subscript()?)
             }
@@ -118,7 +170,25 @@ impl<'l> Word<'l> {
 
 borrowed_str!(Word.printed);
 
-/// The printed form, followed by what the crate reads from it.
+/// Words are equal when they print the same at the same position, so a
+/// word equals itself in another linkage of the same parse.
+impl PartialEq for Word<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index && self.printed == other.printed
+    }
+}
+
+impl Eq for Word<'_> {}
+
+impl Hash for Word<'_> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.index.hash(state);
+        self.printed.hash(state);
+    }
+}
+
+/// The printed form and position, followed by what the crate reads from
+/// the printed form.
 ///
 /// ```
 /// use link_grammar::{Dictionary, Language, Sentence};
@@ -130,7 +200,7 @@ borrowed_str!(Word.printed);
 /// let lander = linkage.words().nth(2).expect("a third word");
 /// assert_eq!(
 ///     format!("{lander:?}"),
-///     r#"Word { printed: "lander[?].n", parts: WordParts { text: "lander", guess: Some(Unknown), subscript: Some("n") }, part_of_speech: Some(Noun), unlinked: false }"#,
+///     r#"Word { printed: "lander[?].n", index: 2, parts: WordParts { text: "lander", guess: Some(Unknown), subscript: Some("n") }, part_of_speech: Some(Noun), unlinked: false }"#,
 /// );
 /// # Ok::<(), link_grammar::Error>(())
 /// ```
@@ -138,6 +208,7 @@ impl fmt::Debug for Word<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Word")
             .field("printed", &self.printed)
+            .field("index", &self.index)
             .field("parts", &self.parts())
             .field("part_of_speech", &self.part_of_speech())
             .field("unlinked", &self.is_unlinked())

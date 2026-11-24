@@ -41,6 +41,18 @@ fn linkage_twice_returns_the_same_words() -> link_grammar::Result<()> {
 }
 
 #[test]
+fn linkage_twice_returns_the_same_links() -> link_grammar::Result<()> {
+    let dictionary = Dictionary::new(Language::English)?;
+    let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
+    sentence.parse()?;
+
+    let first = sentence.linkage(0).expect("a first linkage");
+    let again = sentence.linkage(0).expect("a first linkage");
+    assert!(first.links().eq(again.links()));
+    Ok(())
+}
+
+#[test]
 fn labels_split_into_link_type_and_subscript() -> link_grammar::Result<()>
 {
     let dictionary = Dictionary::new(Language::English)?;
@@ -166,10 +178,8 @@ fn english_words_and_links_have_types() -> link_grammar::Result<()> {
             "{word:?} is missing from {words:?}"
         );
     }
-    let relations: Vec<_> = first
-        .links()
-        .map(|link| link.label.link_type().relation())
-        .collect();
+    let relations: Vec<_> =
+        first.links().map(|link| link.relation()).collect();
     for relation in [
         Relation::Determiner,
         Relation::AttributiveAdjective,

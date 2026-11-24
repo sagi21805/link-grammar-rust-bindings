@@ -49,8 +49,8 @@ directory with `Dictionary::from_path`.
 
 Each `Link` carries a `LinkLabel`, such as `MVp`, which splits into a
 `LinkType` (`MV`) and a `Subscript` (`p`). They borrow the linkage's
-string, so only a parse can make one. For English, `LinkType::relation`
-names the link's grammatical `Relation`, such as `Relation::Subject` for
+string, so only a parse can make one. For English, `Link::relation` names
+the link's grammatical `Relation`, such as `Relation::Subject` for
 `S`, and `Word::part_of_speech` reads a word's `PartOfSpeech` from its
 subscript.
 
