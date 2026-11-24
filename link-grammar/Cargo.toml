@@ -21,3 +21,10 @@ bundled = ["link-grammar-sys/bundled"]
 extend = "1"
 link-grammar-sys = { path = "../link-grammar-sys", version = "0.1.0", default-features = false }
 thiserror = "2"
+
+[dev-dependencies]
+criterion = "0.8.2"
+
+[[bench]]
+name = "links"
+harness = false
