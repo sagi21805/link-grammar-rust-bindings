@@ -38,14 +38,7 @@ pub struct Subscript<'l>(&'l str);
 
 impl<'l> LinkLabel<'l> {
     /// Wraps a label that link-grammar computed.
-    pub(crate) fn new(label: &'l str) -> Self {
-        let label = Self(label);
-        debug_assert!(
-            label.is_well_formed(),
-            "link-grammar returned the malformed label {label}"
-        );
-        label
-    }
+    pub(crate) fn new(label: &'l str) -> Self { Self(label) }
 
     /// The uppercase part, such as `MV` in `MVp`.
     pub fn link_type(self) -> LinkType<'l> { LinkType(self.split().0) }
@@ -57,24 +50,10 @@ impl<'l> LinkLabel<'l> {
     fn split(self) -> (&'l str, &'l str) {
         let subscript_start = self
             .0
-            .find(|c| !is_link_type_char(c))
+            .find(|c: char| !(c.is_ascii_uppercase() || c == '_'))
             .unwrap_or(self.0.len());
         self.0.split_at(subscript_start)
-    }
-
-    /// Whether the label is a link type followed by a subscript.
-    fn is_well_formed(self) -> bool {
-        let (link_type, subscript) = self.split();
-        !link_type.is_empty()
-            && subscript.chars().all(|c| {
-                c.is_ascii_lowercase() || c.is_ascii_digit() || c == '*'
-            })
     }
 }
 
 borrowed_str!(LinkLabel.0, LinkType.0, Subscript.0);
-
-/// Whether `c` belongs in a link type.
-fn is_link_type_char(c: char) -> bool {
-    c.is_ascii_uppercase() || c == '_'
-}
