@@ -1,5 +1,8 @@
 # link-grammar for Rust
 
+> [!WARNING]
+> This repository is under heavy development, and each commit currently may include a breaking change.
+
 Rust bindings for [link-grammar](https://github.com/opencog/link-grammar),
 the CMU/OpenCog syntactic parser for English and other languages.
 
