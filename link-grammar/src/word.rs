@@ -112,20 +112,14 @@ impl<'l> Word<'l> {
 
     /// The word itself, without its guess mark or subscript, such as
     /// `lander` in `lander[?].n`.
-    pub fn text(self) -> &'l str {
-        self.parts().text
-    }
+    pub fn text(self) -> &'l str { self.parts().text }
 
     /// The subscript of the dictionary entry the word matched, such as `n`
     /// in `lander[?].n`.
-    pub fn subscript(self) -> Option<&'l str> {
-        self.parts().subscript
-    }
+    pub fn subscript(self) -> Option<&'l str> { self.parts().subscript }
 
     /// Why the dictionary guessed the word, if it did.
-    pub fn guess(self) -> Option<WordGuess> {
-        self.parts().guess
-    }
+    pub fn guess(self) -> Option<WordGuess> { self.parts().guess }
 
     /// The word class the [`subscript`](Self::subscript) names. It is
     /// `None` for a word without a subscript, for a subscript that names
@@ -156,9 +150,7 @@ impl<'l> Word<'l> {
     /// with [`set_max_null_count`] above 0 does.
     ///
     /// [`set_max_null_count`]: crate::ParseOptions::set_max_null_count
-    pub fn is_unlinked(self) -> bool {
-        self.unlinked_inner().is_some()
-    }
+    pub fn is_unlinked(self) -> bool { self.unlinked_inner().is_some() }
 
     /// The printed form without its brackets, if the word is unlinked.
     fn unlinked_inner(self) -> Option<&'l str> {

@@ -55,14 +55,10 @@ pub struct Link<'l> {
 
 impl<'l> Link<'l> {
     /// The word at the link's left end.
-    pub fn left_word(&self) -> Word<'l> {
-        self.linkage.word(self.left)
-    }
+    pub fn left_word(&self) -> Word<'l> { self.linkage.word(self.left) }
 
     /// The word at the link's right end.
-    pub fn right_word(&self) -> Word<'l> {
-        self.linkage.word(self.right)
-    }
+    pub fn right_word(&self) -> Word<'l> { self.linkage.word(self.right) }
 
     /// The relation the label's [`LinkType`](crate::LinkType) names. It
     /// is `None` for every language but English.
@@ -197,9 +193,7 @@ impl<'s> Linkage<'s> {
     }
 
     /// The handle the C API takes.
-    fn as_raw(&self) -> sys::Linkage {
-        self.raw.as_ptr()
-    }
+    fn as_raw(&self) -> sys::Linkage { self.raw.as_ptr() }
 }
 
 /// The ASCII diagram of a [`Linkage`], wrapped to a column width. Its

@@ -105,9 +105,7 @@ impl PackageCheck {
     }
 
     /// The scratch crate's directory.
-    fn scratch(&self) -> PathBuf {
-        self.dir.join("scratch")
-    }
+    fn scratch(&self) -> PathBuf { self.dir.join("scratch") }
 
     /// Wraps an I/O error in the scratch directory.
     fn io_error(&self) -> impl Fn(io::Error) -> PackageCheckError + '_ {
