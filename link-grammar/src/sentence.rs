@@ -1,16 +1,12 @@
-use std::cell::OnceCell;
-use std::ffi::CString;
-use std::iter;
-use std::ops::Deref;
+use std::ffi::{CString, c_int};
 use std::ptr::NonNull;
 
 use link_grammar_sys as sys;
 
-use crate::{Dictionary, Error, Linkage, ParseOptions, Result};
+use crate::parse_options::ParseOptions;
+use crate::{Dictionary, Error, Linkage, Result};
 
-/// A sentence to parse with a [`Dictionary`]. It keeps the options of
-/// its last parse, which link-grammar reads again when it creates each
-/// [`Linkage`].
+/// A sentence to parse with a [`Dictionary`].
 ///
 /// [`parse`](Self::parse) takes `&mut self`, as reparsing frees the
 /// linkages of the previous parse. The borrow checker therefore rejects
@@ -29,8 +25,9 @@ use crate::{Dictionary, Error, Linkage, ParseOptions, Result};
 /// ```
 pub struct Sentence<'d> {
     raw: NonNull<sys::Sentence_s>,
-    /// `None` until a parse succeeds.
-    parsed: Option<Parsed<'d>>,
+    /// The linkages the last parse kept, best first, and empty before one
+    /// succeeds.
+    linkages: Vec<NonNull<sys::Linkage_s>>,
     dictionary: &'d Dictionary,
 }
 
@@ -48,94 +45,125 @@ impl<'d> Sentence<'d> {
             .expect("sentence_create only fails when malloc does");
         Ok(Self {
             raw,
-            parsed: None,
+            linkages: Vec::new(),
             dictionary,
         })
     }
 
-    /// Splits the sentence into words and finds its linkages with
-    /// link-grammar's default options. Returns how many linkages have no
-    /// post-processing violations.
+    /// Splits the sentence into words and finds its linkages, best first,
+    /// so [`linkage(0)`](Self::linkage) is the best one. When no linkage
+    /// connects every word, the linkages leave the fewest words unlinked
+    /// that they can. Returns how many linkages have no post-processing
+    /// violations.
     pub fn parse(&mut self) -> Result<usize> {
-        self.parse_keeping(SentenceOptions::Default(ParseOptions::new()))
-    }
-
-    /// [`parse`](Self::parse) with `options` instead of the defaults.
-    /// The sentence borrows `options` for as long as it lives, so one set
-    /// of options can parse many sentences.
-    pub fn parse_with(
-        &mut self,
-        options: &'d ParseOptions,
-    ) -> Result<usize> {
-        self.parse_keeping(SentenceOptions::Borrowed(options))
+        self.linkages.clear();
+        let mut options = ParseOptions::new();
+        let mut valid = self.run_parse(&options)?;
+        if valid == 0 {
+            options.set_min_null_count(1);
+            options.set_max_null_count(self.length());
+            valid = self.run_parse(&options)?;
+        }
+        if self.should_extract_every_linkage(&options) {
+            options.set_min_null_count(self.null_count());
+            options.set_linkage_limit(self.found());
+            valid = self.run_parse(&options)?;
+        }
+        // `linkage_create` rewrites a linkage's words and links in place,
+        // so each linkage is created once, here.
+        self.linkages = (0..self.kept())
+            .map(|index| self.create_linkage(index, &options))
+            .collect();
+        Ok(valid)
     }
 
     /// The linkage at `index`, or `None` past the last one the parse
     /// kept or before the first parse.
     pub fn linkage(&self, index: usize) -> Option<Linkage<'_>> {
-        let parsed = self.parsed.as_ref()?;
-        let raw = *parsed.linkages.get(index)?.get_or_init(|| {
-            // SAFETY: Both handles are live, and `index` is below the
-            // number of linkages the parse kept.
-            let raw = unsafe {
-                sys::linkage_create(
-                    index,
-                    self.as_raw(),
-                    parsed.options.as_raw(),
-                )
-            };
-            NonNull::new(raw).expect(
-                "linkage_create succeeds below the number of kept \
-                 linkages",
-            )
-        });
+        let raw = *self.linkages.get(index)?;
         // SAFETY: `raw` is a linkage of this sentence, and the returned
         // `Linkage` borrows `self`, so no reparse happens while it lives.
         Some(unsafe { Linkage::from_raw(raw, self) })
     }
 
     /// Every linkage the parse kept, best first.
-    pub fn linkages(&self) -> impl Iterator<Item = Linkage<'_>> {
-        (0..).map_while(|index| self.linkage(index))
+    pub fn linkages(&self) -> impl ExactSizeIterator<Item = Linkage<'_>> {
+        (0..self.linkages.len()).map(|index| {
+            self.linkage(index)
+                .expect("index is below the linkage count")
+        })
     }
 
     /// How many words each of the best linkages leaves unlinked.
     pub fn null_count(&self) -> usize {
-        let count = unsafe { sys::sentence_null_count(self.as_raw()) };
-        usize::try_from(count).expect("a null count is never negative")
+        self.count(sys::sentence_null_count)
     }
 
-    /// Parses with `options` and keeps them for `linkage_create`.
-    fn parse_keeping(
-        &mut self,
-        options: SentenceOptions<'d>,
-    ) -> Result<usize> {
-        self.parsed = None;
-        options.sync_verbosity();
+    /// Runs `sentence_parse` and returns how many linkages are valid.
+    fn run_parse(&mut self, options: &ParseOptions) -> Result<usize> {
         // SAFETY: Both handles are live, and `&mut self` guarantees no
         // `Linkage` into the storage this frees is alive.
         let status = unsafe {
             sys::sentence_parse(self.as_raw(), options.as_raw())
         };
-        let valid = match status {
-            -1 => return Err(Error::Split),
-            -2 => return Err(Error::TooLong),
-            -3 => return Err(Error::GenerationMode),
-            count => usize::try_from(count)
-                .expect("sentence_parse returns -1, -2, -3 or a count"),
+        match status {
+            -1 => Err(Error::Split),
+            -2 => Err(Error::TooLong),
+            -3 => Err(Error::GenerationMode),
+            count => Ok(usize::try_from(count)
+                .expect("sentence_parse returns -1, -2, -3 or a count")),
+        }
+    }
+
+    /// Whether the last parse extracted only a random sample of its
+    /// linkages, and extracting all of them stays within
+    /// [`MAX_EXACT_LINKAGES`].
+    fn should_extract_every_linkage(
+        &self,
+        options: &ParseOptions,
+    ) -> bool {
+        let found = self.found();
+        options.linkage_limit() < found && found <= MAX_EXACT_LINKAGES
+    }
+
+    /// `linkage_create` for `index`, which is below [`kept`](Self::kept).
+    fn create_linkage(
+        &self,
+        index: usize,
+        options: &ParseOptions,
+    ) -> NonNull<sys::Linkage_s> {
+        // SAFETY: Both handles are live, and `index` is below the number
+        // of linkages the parse kept.
+        let raw = unsafe {
+            sys::linkage_create(index, self.as_raw(), options.as_raw())
         };
-        let kept = unsafe {
-            sys::sentence_num_linkages_post_processed(self.as_raw())
-        };
-        let kept = usize::try_from(kept)
-            .expect("a linkage count is never negative");
-        self.parsed = Some(Parsed {
-            options,
-            linkages: iter::repeat_with(OnceCell::new)
-                .take(kept)
-                .collect(),
-        });
-        Ok(valid)
+        NonNull::new(raw).expect(
+            "linkage_create succeeds below the number of kept linkages",
+        )
+    }
+
+    /// How many words link-grammar split the sentence into.
+    fn length(&self) -> usize { self.count(sys::sentence_length) }
+
+    /// How many linkages the last parse counted.
+    fn found(&self) -> usize {
+        self.count(sys::sentence_num_linkages_found)
+    }
+
+    /// How many linkages the last parse kept.
+    fn kept(&self) -> usize {
+        self.count(sys::sentence_num_linkages_post_processed)
+    }
+
+    /// A count that `get` reads from the sentence.
+    fn count(
+        &self,
+        get: unsafe extern "C" fn(sys::Sentence) -> c_int,
+    ) -> usize {
+        // SAFETY: `get` only reads the sentence.
+        let count = unsafe { get(self.as_raw()) };
+        usize::try_from(count)
+            .expect("link-grammar's counts are never negative")
     }
 
     /// The dictionary the sentence is parsed with.
@@ -153,31 +181,6 @@ impl Drop for Sentence<'_> {
     }
 }
 
-/// What a successful parse leaves for `linkage_create`.
-struct Parsed<'o> {
-    options: SentenceOptions<'o>,
-    /// One cell per linkage the parse kept, filled the first time that
-    /// linkage is asked for. Each `linkage_create` call allocates the
-    /// linkage's word list again and leaks the old one, so it runs once
-    /// per linkage.
-    linkages: Vec<OnceCell<NonNull<sys::Linkage_s>>>,
-}
-
-/// The options a sentence parsed with.
-enum SentenceOptions<'o> {
-    /// Made by [`Sentence::parse`].
-    Default(ParseOptions),
-    /// Lent to [`Sentence::parse_with`].
-    Borrowed(&'o ParseOptions),
-}
-
-impl Deref for SentenceOptions<'_> {
-    type Target = ParseOptions;
-
-    fn deref(&self) -> &ParseOptions {
-        match self {
-            Self::Default(options) => options,
-            Self::Borrowed(options) => options,
-        }
-    }
-}
+/// The most linkages [`Sentence::parse`] extracts to find the best one.
+/// Past it, the best linkage is the best of link-grammar's random sample.
+const MAX_EXACT_LINKAGES: usize = 50_000;

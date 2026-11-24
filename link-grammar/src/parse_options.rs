@@ -6,37 +6,16 @@ use link_grammar_sys as sys;
 
 use crate::verbosity::{self, Verbosity};
 
-/// Settings that control how
-/// [`Sentence::parse_with`](crate::Sentence::parse_with) searches for
-/// linkages.
-pub struct ParseOptions {
+/// link-grammar's options for one parse, at the level
+/// [`set_verbosity`](crate::set_verbosity) chose.
+pub(crate) struct ParseOptions {
     raw: NonNull<sys::Parse_Options_s>,
 }
 
 impl ParseOptions {
     /// link-grammar's default options.
-    pub fn new() -> Self { Self::with_verbosity(&verbosity::current()) }
-
-    /// The most linkages a parse keeps. Values past `i32::MAX` keep
-    /// `i32::MAX`.
-    pub fn set_linkage_limit(&mut self, limit: usize) {
-        unsafe {
-            sys::parse_options_set_linkage_limit(
-                self.as_raw(),
-                saturating_c_int(limit),
-            )
-        };
-    }
-
-    /// The most words a linkage may leave unlinked, so ungrammatical
-    /// sentences still parse. The default is 0.
-    pub fn set_max_null_count(&mut self, count: usize) {
-        unsafe {
-            sys::parse_options_set_max_null_count(
-                self.as_raw(),
-                saturating_c_int(count),
-            )
-        };
+    pub(crate) fn new() -> Self {
+        Self::with_verbosity(&verbosity::current())
     }
 
     /// Default options at `verbosity`, which also becomes link-grammar's
@@ -46,38 +25,57 @@ impl ParseOptions {
     ) -> Self {
         // SAFETY: `parse_options_create` takes no arguments.
         let raw = unsafe { sys::parse_options_create() };
-        let options = Self {
-            raw: NonNull::new(raw).expect(
-                "parse_options_create only fails when malloc does",
-            ),
-        };
-        options.write_verbosity(**verbosity);
-        options
-    }
-
-    /// Copies the process-wide level into these options, which keep their
-    /// own copy for the step times they print.
-    pub(crate) fn sync_verbosity(&self) {
-        let verbosity = verbosity::current();
-        self.write_verbosity(*verbosity);
-    }
-
-    /// Sets the options' level and link-grammar's global level.
-    fn write_verbosity(&self, verbosity: Verbosity) {
+        let raw = NonNull::new(raw)
+            .expect("parse_options_create only fails when malloc does");
         unsafe {
             sys::parse_options_set_verbosity(
-                self.as_raw(),
+                raw.as_ptr(),
                 verbosity.as_raw(),
+            )
+        };
+        Self { raw }
+    }
+
+    /// The most linkages a parse extracts. Past it, the parse extracts a
+    /// random sample of this many.
+    pub(crate) fn linkage_limit(&self) -> usize {
+        let limit =
+            unsafe { sys::parse_options_get_linkage_limit(self.as_raw()) };
+        usize::try_from(limit).expect("a linkage limit is never negative")
+    }
+
+    /// Sets [`linkage_limit`](Self::linkage_limit).
+    pub(crate) fn set_linkage_limit(&mut self, limit: usize) {
+        unsafe {
+            sys::parse_options_set_linkage_limit(
+                self.as_raw(),
+                saturating_c_int(limit),
+            )
+        };
+    }
+
+    /// The fewest words a linkage may leave unlinked.
+    pub(crate) fn set_min_null_count(&mut self, count: usize) {
+        unsafe {
+            sys::parse_options_set_min_null_count(
+                self.as_raw(),
+                saturating_c_int(count),
+            )
+        };
+    }
+
+    /// The most words a linkage may leave unlinked.
+    pub(crate) fn set_max_null_count(&mut self, count: usize) {
+        unsafe {
+            sys::parse_options_set_max_null_count(
+                self.as_raw(),
+                saturating_c_int(count),
             )
         };
     }
 
     /// The handle the C API takes.
     pub(crate) fn as_raw(&self) -> sys::Parse_Options { self.raw.as_ptr() }
-}
-
-impl Default for ParseOptions {
-    fn default() -> Self { Self::new() }
 }
 
 impl Drop for ParseOptions {

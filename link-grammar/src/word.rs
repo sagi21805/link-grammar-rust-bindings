@@ -117,10 +117,8 @@ impl<'l> Word<'l> {
         }
     }
 
-    /// Whether the linkage leaves the word unlinked, which only a parse
-    /// with [`set_max_null_count`] above 0 does.
-    ///
-    /// [`set_max_null_count`]: crate::ParseOptions::set_max_null_count
+    /// Whether the linkage leaves the word unlinked, which happens only
+    /// when no linkage connects every word.
     pub fn is_unlinked(self) -> bool { self.unlinked_inner().is_some() }
 
     /// The printed form without its brackets, if the word is unlinked.

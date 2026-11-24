@@ -1,7 +1,7 @@
 use std::ffi::c_int;
 use std::sync::{Mutex, MutexGuard};
 
-use crate::ParseOptions;
+use crate::parse_options::ParseOptions;
 
 /// How much link-grammar prints to stderr. Each level adds to the ones
 /// before it.
@@ -26,7 +26,7 @@ pub enum Verbosity {
 ///
 /// The level applies to the whole process, because link-grammar keeps it
 /// in a global variable. Every [`Sentence::parse`](crate::Sentence::parse)
-/// after this call uses it, whichever [`ParseOptions`] it gets.
+/// after this call uses it.
 pub fn set_verbosity(verbosity: Verbosity) {
     let mut level = current();
     *level = verbosity;
