@@ -3,12 +3,12 @@ use std::ptr::NonNull;
 
 use link_grammar_sys as sys;
 
+use crate::c_str_ext::CStrPtr;
 #[cfg(feature = "bundled")]
 use crate::internals_ext::{LinkInternals, LinkageInternals};
 use crate::{
     Dictionary, Language, LinkLabel, Relation, Sentence, Subscript, Word,
 };
-use crate::{c_str_ext::CStrPtr, relation};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
