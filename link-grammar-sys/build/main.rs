@@ -1,11 +1,13 @@
 //! Compiles link-grammar from the submodule with the `bundled` feature,
 //! or finds a system install through pkg-config without it.
 
+mod defines;
 mod link_features;
 
 use std::env;
 use std::path::{Path, PathBuf};
 
+use crate::defines::Target;
 use crate::link_features::LinkFeatures;
 
 fn main() {
@@ -162,26 +164,23 @@ impl LinkGrammarBuild {
     fn data_dir(&self) -> PathBuf { self.source_root().join("data") }
 }
 
-/// A target whose configure results the bundled build knows.
-enum Target {
-    LinuxGnu,
-    MacOs,
-}
-
 impl Target {
     fn from_env() -> Self {
         let os = env::var("CARGO_CFG_TARGET_OS")
             .expect("cargo sets CARGO_CFG_TARGET_OS");
         let libc = env::var("CARGO_CFG_TARGET_ENV")
             .expect("cargo sets CARGO_CFG_TARGET_ENV");
-        match (os.as_str(), libc.as_str()) {
-            ("linux", "gnu") => Self::LinuxGnu,
-            ("macos", _) => Self::MacOs,
+        let width = env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
+            .expect("cargo sets CARGO_CFG_TARGET_POINTER_WIDTH");
+        // `src/internals.rs` holds 64-bit layouts.
+        match (os.as_str(), libc.as_str(), width.as_str()) {
+            ("linux", "gnu", "64") => Self::LinuxGnu,
+            ("macos", _, "64") => Self::MacOs,
             _ => panic!(
                 "The bundled link-grammar build doesn't support the \
-                 {os}-{libc} target yet. Install link-grammar and turn \
-                 off the `bundled` feature with `default-features = \
-                 false`."
+                 {width}-bit {os}-{libc} target yet. Install \
+                 link-grammar and turn off the `bundled` feature with \
+                 `default-features = false`."
             ),
         }
     }
@@ -196,18 +195,6 @@ impl Target {
         }
     }
 
-    /// The defines configure finds on this target, with the optional
-    /// libraries turned off.
-    fn defines(
-        &self,
-    ) -> impl Iterator<Item = &'static (&'static str, &'static str)> {
-        let own = match self {
-            Self::LinuxGnu => LINUX_GNU_DEFINES,
-            Self::MacOs => MACOS_DEFINES,
-        };
-        UNIX_DEFINES.iter().chain(own)
-    }
-
     /// `defines` as configure's `LG_DEFS`, the `-DNAME=VALUE` list that
     /// `linkgrammar_get_configuration()` reports.
     fn lg_defs(&self) -> String {
@@ -217,37 +204,6 @@ impl Target {
             .join(" ")
     }
 }
-
-/// What configure finds on every supported target, minus the macros no
-/// compiled source reads. Regex comes from libc's `<regex.h>`.
-const UNIX_DEFINES: &[(&str, &str)] = &[
-    ("_DEFAULT_SOURCE", "1"),
-    ("_GNU_SOURCE", "1"),
-    ("TLS", "_Thread_local"),
-    ("HAVE_REGEX_H", "1"),
-    ("HAVE_ALLOCA_H", "1"),
-    ("HAVE_ALIGNED_ALLOC", "1"),
-    ("HAVE___BUILTIN_TYPES_COMPATIBLE_P", "1"),
-    ("HAVE_TYPEOF", "1"),
-    ("typeof", "__typeof__"),
-    ("HAVE_STRNDUP", "1"),
-    ("HAVE_STRTOK_R", "1"),
-    ("HAVE_STRERROR_R", "1"),
-];
-
-/// What glibc Linux adds, which is `locale_t` in `<locale.h>`, the GNU
-/// `strerror_r` that returns a `char *`, and `malloc_trim`.
-const LINUX_GNU_DEFINES: &[(&str, &str)] = &[
-    ("HAVE_LOCALE_T_IN_LOCALE_H", "1"),
-    ("STRERROR_R_CHAR_P", "1"),
-    ("HAVE_MALLOC_TRIM", "1"),
-];
-
-/// What macOS needs for `locale_t`. configure finds it in `<locale.h>`,
-/// but `iswspace_l` and the other `isw*_l` functions are declared only
-/// in `<xlocale.h>`, so the sources must include that header.
-const MACOS_DEFINES: &[(&str, &str)] =
-    &[("HAVE_LOCALE_T_IN_XLOCALE_H", "1"), ("HAVE_XLOCALE_H", "1")];
 
 /// The path in the environment variable `name`, which cargo sets.
 fn env_path(name: &str) -> PathBuf {

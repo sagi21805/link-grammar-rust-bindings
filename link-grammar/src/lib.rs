@@ -25,24 +25,34 @@ mod macros;
 
 mod c_str_ext;
 mod dictionary;
+#[cfg(all(test, feature = "bundled"))]
+mod differential_tests;
 mod error;
+#[cfg(feature = "bundled")]
+mod internals_ext;
 mod language;
 mod link_label;
+#[cfg(feature = "bundled")]
+mod link_types;
 mod linkage;
 mod parse_options;
 mod part_of_speech;
 mod relation;
+mod relation_subscript;
 mod sentence;
+pub mod subscript;
 mod verbosity;
 mod word;
 
 pub use dictionary::Dictionary;
 pub use error::{Error, Result};
 pub use language::Language;
-pub use link_label::{LinkLabel, LinkType, Subscript};
+pub use link_label::{LinkLabel, LinkType};
 pub use linkage::{Link, Linkage};
 pub use part_of_speech::PartOfSpeech;
 pub use relation::Relation;
+pub use relation_subscript::RelationSubscript;
 pub use sentence::Sentence;
+pub use subscript::Subscript;
 pub use verbosity::{Verbosity, set_verbosity};
 pub use word::{Word, WordGuess};

@@ -1,12 +1,14 @@
+use crate::Subscript;
+
 /// A link's label, such as `MVp`, which is the [`LinkType`] `MV` followed
-/// by the [`Subscript`] `p`.
+/// by the [`Subscript`](crate::Subscript) `p`.
 ///
 /// Labels only come from a parse, so each one has link-grammar's shape.
 /// The link type is uppercase letters and `_`, and the subscript is
 /// lowercase letters, digits and `*`.
 ///
 /// ```
-/// use link_grammar::{Dictionary, Language, Sentence};
+/// use link_grammar::{Dictionary, Language, Sentence, Subscript};
 ///
 /// let dictionary = Dictionary::new(Language::English)?;
 /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
@@ -14,11 +16,11 @@
 /// let linkage = sentence.linkage(0).expect("a parse");
 /// let subject = linkage
 ///     .links()
-///     .map(|link| link.label)
+///     .map(|link| link.label())
 ///     .find(|label| label.link_type() == "S")
 ///     .expect("a subject link");
 /// assert_eq!(subject, "Ss*s");
-/// assert_eq!(subject.subscript(), "s*s");
+/// assert_eq!(subject.subscript(), Subscript::new("s*s"));
 /// # Ok::<(), link_grammar::Error>(())
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -30,12 +32,6 @@ pub struct LinkLabel<'l>(&'l str);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LinkType<'l>(&'l str);
 
-/// The lowercase part of a [`LinkLabel`], such as `p`, which narrows its
-/// [`LinkType`]. Each `*` matches any letter in that position. It is empty
-/// when the label is only a link type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Subscript<'l>(&'l str);
-
 impl<'l> LinkLabel<'l> {
     /// Wraps a label that link-grammar computed.
     pub(crate) fn new(label: &'l str) -> Self { Self(label) }
@@ -44,7 +40,9 @@ impl<'l> LinkLabel<'l> {
     pub fn link_type(self) -> LinkType<'l> { LinkType(self.split().0) }
 
     /// The lowercase part, such as `p` in `MVp`.
-    pub fn subscript(self) -> Subscript<'l> { Subscript(self.split().1) }
+    pub fn subscript(self) -> Subscript {
+        Subscript::from_label(self.split().1)
+    }
 
     /// The label split where its subscript starts.
     fn split(self) -> (&'l str, &'l str) {
@@ -56,4 +54,4 @@ impl<'l> LinkLabel<'l> {
     }
 }
 
-borrowed_str!(LinkLabel.0, LinkType.0, Subscript.0);
+borrowed_str!(LinkLabel.0, LinkType.0);

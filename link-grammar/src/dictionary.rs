@@ -6,6 +6,8 @@ use std::sync::Mutex;
 use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
+#[cfg(feature = "bundled")]
+use crate::link_types::LinkTypes;
 use crate::{Error, Language, Result};
 
 /// The grammar and word list of one language.
@@ -27,6 +29,8 @@ use crate::{Error, Language, Result};
 pub struct Dictionary {
     raw: NonNull<sys::Dictionary_s>,
     language: Option<Language>,
+    #[cfg(feature = "bundled")]
+    link_types: LinkTypes,
 }
 
 impl Dictionary {
@@ -58,10 +62,20 @@ impl Dictionary {
         // SAFETY: `raw` is a live dictionary, which owns the string.
         let code =
             unsafe { sys::dictionary_get_lang(raw.as_ptr()).as_utf8() };
-        Ok(Self {
+        let language = Language::from_code(code);
+        #[cfg_attr(not(feature = "bundled"), expect(unused_mut))]
+        let mut dictionary = Self {
             raw,
-            language: Language::from_code(code),
-        })
+            language,
+            #[cfg(feature = "bundled")]
+            link_types: LinkTypes::default(),
+        };
+        #[cfg(feature = "bundled")]
+        {
+            dictionary.link_types =
+                LinkTypes::new(dictionary.internals(), language);
+        }
+        Ok(dictionary)
     }
 
     /// Makes later [`new`](Self::new) calls look in `path` first. `path`
@@ -79,6 +93,10 @@ impl Dictionary {
     /// [`from_path`](Self::from_path) loads whose name isn't a
     /// [`Language::code`].
     pub fn language(&self) -> Option<Language> { self.language }
+
+    /// The relation of each of the dictionary's link type numbers.
+    #[cfg(feature = "bundled")]
+    pub(crate) fn link_types(&self) -> &LinkTypes { &self.link_types }
 
     /// The handle the C API takes.
     pub(crate) fn as_raw(&self) -> sys::Dictionary { self.raw.as_ptr() }

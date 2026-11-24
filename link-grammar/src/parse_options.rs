@@ -36,24 +36,6 @@ impl ParseOptions {
         Self { raw }
     }
 
-    /// The most linkages a parse extracts. Past it, the parse extracts a
-    /// random sample of this many.
-    pub(crate) fn linkage_limit(&self) -> usize {
-        let limit =
-            unsafe { sys::parse_options_get_linkage_limit(self.as_raw()) };
-        usize::try_from(limit).expect("a linkage limit is never negative")
-    }
-
-    /// Sets [`linkage_limit`](Self::linkage_limit).
-    pub(crate) fn set_linkage_limit(&mut self, limit: usize) {
-        unsafe {
-            sys::parse_options_set_linkage_limit(
-                self.as_raw(),
-                saturating_c_int(limit),
-            )
-        };
-    }
-
     /// The fewest words a linkage may leave unlinked.
     pub(crate) fn set_min_null_count(&mut self, count: usize) {
         unsafe {

@@ -23,3 +23,19 @@ pub const BUNDLED_DATA_DIR: &str =
 
 // `cargo xtask regen` writes this file with bindgen.
 include!("bindings.rs");
+
+/// The layouts of link-grammar's private structs, as the bundled build
+/// compiles them. They aren't API, and they change with every upstream
+/// release.
+#[cfg(feature = "bundled")]
+#[doc(hidden)]
+pub mod internals {
+    #![expect(
+        non_camel_case_types,
+        non_snake_case,
+        reason = "bindgen keeps the C names"
+    )]
+
+    // `cargo xtask regen` writes this file with bindgen.
+    include!("internals.rs");
+}

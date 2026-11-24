@@ -1,6 +1,13 @@
 use std::fmt;
 use std::hash::{Hash, Hasher};
 
+#[cfg(feature = "bundled")]
+use link_grammar_sys::internals;
+
+#[cfg(feature = "bundled")]
+use crate::internals_ext::{
+    DisjunctInternals, LinkageInternals, WordNode,
+};
 use crate::{Language, Link, Linkage, PartOfSpeech, Relation};
 
 /// A word of a [`Linkage`](crate::Linkage), as link-grammar prints it.
@@ -27,7 +34,6 @@ use crate::{Language, Link, Linkage, PartOfSpeech, Relation};
 /// ```
 #[derive(Clone, Copy)]
 pub struct Word<'l> {
-    printed: &'l str,
     /// The word's position in `linkage`, with the left wall at 0.
     index: usize,
     linkage: &'l Linkage<'l>,
@@ -51,17 +57,14 @@ pub enum WordGuess {
 }
 
 impl<'l> Word<'l> {
-    /// Wraps the word `linkage` printed at `index`.
-    pub(crate) fn new(
-        printed: &'l str,
-        index: usize,
-        linkage: &'l Linkage<'l>,
-    ) -> Self {
-        Self {
-            printed,
-            index,
-            linkage,
-        }
+    /// The word of `linkage` at `index`, which is below the word count.
+    pub(crate) fn new(index: usize, linkage: &'l Linkage<'l>) -> Self {
+        Self { index, linkage }
+    }
+
+    /// The word as link-grammar prints it, such as `lander[?].n`.
+    pub fn as_str(self) -> &'l str {
+        self.linkage.printed_word(self.index)
     }
 
     /// The links with an end at the word, in the linkage's order.
@@ -96,14 +99,40 @@ impl<'l> Word<'l> {
 
     /// The word itself, without its guess mark or subscript, such as
     /// `lander` in `lander[?].n`.
-    pub fn text(self) -> &'l str { self.parts().text }
+    pub fn text(self) -> &'l str {
+        #[cfg(feature = "bundled")]
+        return match self.entry() {
+            Some(entry) => entry
+                .rsplit_once(SUBSCRIPT_MARK)
+                .map_or(entry, |(text, _)| text),
+            None => self.unlinked_inner().unwrap_or(self.as_str()),
+        };
+        #[cfg(not(feature = "bundled"))]
+        return self.parts().text;
+    }
 
     /// The subscript of the dictionary entry the word matched, such as `n`
     /// in `lander[?].n`.
-    pub fn subscript(self) -> Option<&'l str> { self.parts().subscript }
+    pub fn subscript(self) -> Option<&'l str> {
+        #[cfg(feature = "bundled")]
+        return self
+            .entry()?
+            .rsplit_once(SUBSCRIPT_MARK)
+            .map(|(_, subscript)| subscript)
+            .filter(|&subscript| subscript != IDIOM_SUBSCRIPT);
+        #[cfg(not(feature = "bundled"))]
+        return self.parts().subscript;
+    }
 
     /// Why the dictionary guessed the word, if it did.
-    pub fn guess(self) -> Option<WordGuess> { self.parts().guess }
+    pub fn guess(self) -> Option<WordGuess> {
+        #[cfg(feature = "bundled")]
+        return self.disjunct().and_then(|_| {
+            self.linkage.internals().word_nodes()[self.index].guess()
+        });
+        #[cfg(not(feature = "bundled"))]
+        return self.parts().guess;
+    }
 
     /// The word class the [`subscript`](Self::subscript) names. It is
     /// `None` for a word without a subscript, for a subscript that names
@@ -119,31 +148,56 @@ impl<'l> Word<'l> {
 
     /// Whether the linkage leaves the word unlinked, which happens only
     /// when no linkage connects every word.
-    pub fn is_unlinked(self) -> bool { self.unlinked_inner().is_some() }
+    pub fn is_unlinked(self) -> bool {
+        #[cfg(feature = "bundled")]
+        return self.disjunct().is_none();
+        #[cfg(not(feature = "bundled"))]
+        return self.unlinked_inner().is_some();
+    }
+
+    /// The dictionary entry the word used, such as `dog\x03n`, or `None`
+    /// for an unlinked word.
+    #[cfg(feature = "bundled")]
+    fn entry(self) -> Option<&'l str> { Some(self.disjunct()?.entry()) }
+
+    /// The disjunct the word used, or `None` for an unlinked word.
+    #[cfg(feature = "bundled")]
+    fn disjunct(self) -> Option<&'l internals::Disjunct_struct> {
+        self.linkage.internals().chosen_disjuncts()[self.index]
+    }
 
     /// The printed form without its brackets, if the word is unlinked.
-    fn unlinked_inner(self) -> Option<&'l str> {
-        self.printed
+    pub(crate) fn unlinked_inner(self) -> Option<&'l str> {
+        self.as_str()
             .strip_prefix('[')
             .and_then(|inner| inner.strip_suffix(']'))
             .filter(|inner| !inner.is_empty())
     }
 
     /// The printed form split into the word, the guess and the subscript.
-    fn parts(self) -> WordParts<'l> {
-        let printed = self.unlinked_inner().unwrap_or(self.printed);
+    #[cfg(any(test, not(feature = "bundled")))]
+    pub(crate) fn parts(self) -> WordParts<'l> {
+        let printed = self.unlinked_inner().unwrap_or(self.as_str());
         WordParts::with_guess(printed)
             .unwrap_or_else(|| WordParts::without_guess(printed))
     }
 }
 
-borrowed_str!(Word.printed);
+impl fmt::Display for Word<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl PartialEq<&str> for Word<'_> {
+    fn eq(&self, other: &&str) -> bool { self.as_str() == *other }
+}
 
 /// Words are equal when they print the same at the same position, so a
 /// word equals itself in another linkage of the same parse.
 impl PartialEq for Word<'_> {
     fn eq(&self, other: &Self) -> bool {
-        self.index == other.index && self.printed == other.printed
+        self.index == other.index && self.as_str() == other.as_str()
     }
 }
 
@@ -152,32 +206,44 @@ impl Eq for Word<'_> {}
 impl Hash for Word<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.index.hash(state);
-        self.printed.hash(state);
+        self.as_str().hash(state);
     }
 }
 
-/// The printed form and position, followed by what the crate reads from
-/// the printed form.
+/// The printed form and position, followed by what the crate reads about
+/// the word.
 impl fmt::Debug for Word<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Word")
-            .field("printed", &self.printed)
+            .field("printed", &self.as_str())
             .field("index", &self.index)
-            .field("parts", &self.parts())
+            .field("text", &self.text())
+            .field("guess", &self.guess())
+            .field("subscript", &self.subscript())
             .field("part_of_speech", &self.part_of_speech())
             .field("unlinked", &self.is_unlinked())
             .finish()
     }
 }
 
+/// The mark between a dictionary entry's word and its subscript.
+#[cfg(feature = "bundled")]
+const SUBSCRIPT_MARK: char = internals::SUBSCRIPT_MARK as char;
+
+/// The subscript link-grammar gives idiom words, which it doesn't print.
+#[cfg(feature = "bundled")]
+const IDIOM_SUBSCRIPT: &str = "_I";
+
 /// The pieces of a printed word.
-#[derive(Debug)]
-struct WordParts<'l> {
-    text: &'l str,
-    guess: Option<WordGuess>,
-    subscript: Option<&'l str>,
+#[cfg(any(test, not(feature = "bundled")))]
+#[derive(Debug, PartialEq)]
+pub(crate) struct WordParts<'l> {
+    pub(crate) text: &'l str,
+    pub(crate) guess: Option<WordGuess>,
+    pub(crate) subscript: Option<&'l str>,
 }
 
+#[cfg(any(test, not(feature = "bundled")))]
 impl<'l> WordParts<'l> {
     /// `text[mark…]` or `text[mark…].subscript`. The brackets may hold a
     /// regex name after the mark.
@@ -222,6 +288,7 @@ impl<'l> WordParts<'l> {
     }
 }
 
+#[cfg(any(test, not(feature = "bundled")))]
 impl WordGuess {
     /// The guess that prints `mark`, one of `!`, `~`, `&` and `?`.
     fn from_mark(mark: char) -> Option<Self> {

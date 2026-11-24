@@ -17,7 +17,7 @@ fn parse_finds_link_parsers_linkages() -> link_grammar::Result<()> {
 
     let first = sentence.linkage(0).expect("a first linkage");
     let labels: Vec<&str> =
-        first.links().map(|link| link.label.as_str()).collect();
+        first.links().map(|link| link.label().as_str()).collect();
     for label in ["Wd", "D*u", "Ss", "K", "MVp", "Js", "Xp", "WV"] {
         assert!(
             labels.contains(&label),
@@ -49,16 +49,19 @@ fn labels_split_into_link_type_and_subscript() -> link_grammar::Result<()>
     sentence.parse()?;
 
     let first = sentence.linkage(0).expect("a first linkage");
-    let parts: Vec<(&str, &str)> = first
+    let parts: Vec<(&str, String)> = first
         .links()
         .map(|link| {
             (
-                link.label.link_type().as_str(),
-                link.label.subscript().as_str(),
+                link.label().link_type().as_str(),
+                link.label().subscript().to_string(),
             )
         })
         .collect();
-    for part in [("D", "*u"), ("MV", "p"), ("K", ""), ("WV", "")] {
+    for (link_type, subscript) in
+        [("D", "*u"), ("MV", "p"), ("K", ""), ("WV", "")]
+    {
+        let part = (link_type, subscript.to_owned());
         assert!(
             parts.contains(&part),
             "{part:?} is missing from {parts:?}"
