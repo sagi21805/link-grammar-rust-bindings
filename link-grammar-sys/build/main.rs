@@ -170,14 +170,17 @@ impl Target {
             .expect("cargo sets CARGO_CFG_TARGET_OS");
         let libc = env::var("CARGO_CFG_TARGET_ENV")
             .expect("cargo sets CARGO_CFG_TARGET_ENV");
-        match (os.as_str(), libc.as_str()) {
-            ("linux", "gnu") => Self::LinuxGnu,
-            ("macos", _) => Self::MacOs,
+        let width = env::var("CARGO_CFG_TARGET_POINTER_WIDTH")
+            .expect("cargo sets CARGO_CFG_TARGET_POINTER_WIDTH");
+        // `src/internals.rs` holds 64-bit layouts.
+        match (os.as_str(), libc.as_str(), width.as_str()) {
+            ("linux", "gnu", "64") => Self::LinuxGnu,
+            ("macos", _, "64") => Self::MacOs,
             _ => panic!(
                 "The bundled link-grammar build doesn't support the \
-                 {os}-{libc} target yet. Install link-grammar and turn \
-                 off the `bundled` feature with `default-features = \
-                 false`."
+                 {width}-bit {os}-{libc} target yet. Install \
+                 link-grammar and turn off the `bundled` feature with \
+                 `default-features = false`."
             ),
         }
     }
