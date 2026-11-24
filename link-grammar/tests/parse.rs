@@ -28,7 +28,7 @@ fn parse_finds_link_parsers_linkages() -> link_grammar::Result<()> {
 }
 
 #[test]
-fn linkage_twice_returns_the_same_words() -> link_grammar::Result<()> {
+fn linkage_twice_returns_the_same_linkage() -> link_grammar::Result<()> {
     let dictionary = Dictionary::new(Language::English)?;
     let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
     sentence.parse()?;
@@ -36,17 +36,6 @@ fn linkage_twice_returns_the_same_words() -> link_grammar::Result<()> {
     let first = sentence.linkage(0).expect("a first linkage");
     let again = sentence.linkage(0).expect("a first linkage");
     assert!(first.words().eq(again.words()));
-    Ok(())
-}
-
-#[test]
-fn linkage_twice_returns_the_same_links() -> link_grammar::Result<()> {
-    let dictionary = Dictionary::new(Language::English)?;
-    let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-    sentence.parse()?;
-
-    let first = sentence.linkage(0).expect("a first linkage");
-    let again = sentence.linkage(0).expect("a first linkage");
     assert!(first.links().eq(again.links()));
     Ok(())
 }
