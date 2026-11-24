@@ -16,12 +16,6 @@ pre-generated. The bundled build supports Linux with glibc and macOS for now.
 Without `bundled`, the build finds a system install through pkg-config
 and links that.
 
-With `bundled`, crates that depend on this one get two variables from
-its build script.
-`DEP_LINK_GRAMMAR_INCLUDE` is the directory holding the generated
-`link-grammar/link-features.h`, and `DEP_LINK_GRAMMAR_DATA` is the
-bundled dictionary directory.
-
 ## License
 
 LGPL-2.1, the same as link-grammar. The `bundled` build links link-grammar

@@ -106,9 +106,7 @@ impl LinkGrammarBuild {
         }
     }
 
-    /// Writes `link-features.h`, compiles and links the library, and
-    /// tells crates that depend on this one where its headers and
-    /// dictionaries are.
+    /// Writes `link-features.h`, and compiles and links the library.
     fn run(&self) {
         LinkFeatures::new(
             &self.source_root(),
@@ -121,12 +119,6 @@ impl LinkGrammarBuild {
              OUT_DIR is writable",
         );
         self.compile();
-
-        println!(
-            "cargo::metadata=include={}",
-            self.include_dir().display()
-        );
-        println!("cargo::metadata=data={}", self.data_dir().display());
         println!("cargo::rerun-if-changed=build");
         println!("cargo::rerun-if-changed=generated");
         println!("cargo::rerun-if-changed=link-grammar/link-grammar");
