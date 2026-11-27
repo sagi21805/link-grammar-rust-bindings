@@ -2,9 +2,8 @@
 //!
 //! A [`Dictionary`] holds a language's grammar. A [`Sentence`] borrows it,
 //! and parsing the sentence finds its [`Linkage`]s, each a set of
-//! [`Link`]s between words. A link's [`LinkLabel`] splits into a
-//! [`LinkType`], which names a [`Relation`], and a [`Subscript`]. A
-//! [`Word`]'s subscript names its [`PartOfSpeech`].
+//! [`Link`]s between [`Word`]s. A link's [`LinkLabel`] splits into a
+//! [`LinkType`], which names a [`Relation`], and a [`Subscript`].
 //!
 //! [link-grammar]: https://github.com/opencog/link-grammar
 
@@ -22,7 +21,6 @@ mod link_label;
 mod link_types;
 mod linkage;
 mod parse_options;
-mod part_of_speech;
 mod relation;
 mod sentence;
 mod subscript;
@@ -34,9 +32,8 @@ pub use error::{Error, Result};
 pub use language::Language;
 pub use link_label::{LinkLabel, LinkType};
 pub use linkage::{Link, Linkage};
-pub use part_of_speech::PartOfSpeech;
 pub use relation::Relation;
 pub use sentence::Sentence;
 pub use subscript::Subscript;
 pub use verbosity::{Verbosity, set_verbosity};
-pub use word::{Word, WordGuess};
+pub use word::Word;

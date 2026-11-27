@@ -5,9 +5,7 @@ use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
 use crate::internals_ext::{LinkInternals, LinkageInternals};
-use crate::{
-    Dictionary, Language, LinkLabel, Relation, Sentence, Subscript, Word,
-};
+use crate::{Dictionary, LinkLabel, Relation, Sentence, Subscript, Word};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
@@ -71,27 +69,6 @@ impl fmt::Debug for Link<'_> {
     }
 }
 
-/// Links are equal when they join the same positions with the same link
-/// type and subscript, so a link equals itself in another linkage of the
-/// same parse.
-impl PartialEq for Link<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.left == other.left
-            && self.right == other.right
-            && self.subscript() == other.subscript()
-            && self.has_link_type_of(other)
-    }
-}
-
-impl Link<'_> {
-    /// Whether the two links have the same link type.
-    fn has_link_type_of(&self, other: &Self) -> bool {
-        self.raw().link_type() == other.raw().link_type()
-    }
-}
-
-impl Eq for Link<'_> {}
-
 impl<'s> Linkage<'s> {
     /// Wraps a handle from `linkage_create` for `sentence`. The borrow
     /// keeps `sentence` from being reparsed while the linkage lives.
@@ -126,23 +103,6 @@ impl<'s> Linkage<'s> {
             })
     }
 
-    /// The first link whose label names `relation`. Use
-    /// [`links`](Self::links) to find every such link.
-    pub fn link(&self, relation: Relation) -> Option<Link<'_>> {
-        self.links().find(|link| link.relation() == Some(relation))
-    }
-
-    pub fn link_with_subscript_start(
-        &self,
-        r: Relation,
-        s: char,
-    ) -> Option<Link<'_>> {
-        self.links().find(|l| {
-            l.relation() == (Some(r))
-                && l.subscript().get(0).map(|c| c == s).unwrap_or(false)
-        })
-    }
-
     /// The ASCII diagram link-parser prints, wrapped to `width` columns.
     pub fn diagram(&self, width: usize) -> String {
         let raw = unsafe {
@@ -164,11 +124,6 @@ impl<'s> Linkage<'s> {
         // SAFETY: `index` is below the word count, and the word lives as
         // long as the linkage.
         unsafe { sys::linkage_get_word(self.as_raw(), index).as_utf8() }
-    }
-
-    /// The language of the sentence's dictionary.
-    pub(crate) fn language(&self) -> Option<Language> {
-        self.dictionary().language()
     }
 
     /// The dictionary the sentence was parsed with.

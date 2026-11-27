@@ -3,14 +3,12 @@ use std::hash::{Hash, Hasher};
 
 use link_grammar_sys::internals;
 
-use crate::internals_ext::{
-    DisjunctInternals, LinkageInternals, WordNode,
-};
-use crate::{Language, Link, Linkage, PartOfSpeech, Relation};
+use crate::internals_ext::{DisjunctInternals, LinkageInternals};
+use crate::{Link, Linkage};
 
 /// A word of a [`Linkage`](crate::Linkage), as link-grammar prints it.
 ///
-/// The printed form is the word, a [`WordGuess`] mark in brackets when the
+/// The printed form is the word, a guess mark in brackets when the
 /// dictionary had to guess, and a `.` with the dictionary entry's
 /// subscript, as in `lander[?].n`, `Mr..x` and `123[!]`. A word that a
 /// parse with nulls left unlinked prints in brackets, as `[the]`.
@@ -19,23 +17,6 @@ pub struct Word<'l> {
     /// The word's position in `linkage`, with the left wall at 0.
     index: usize,
     linkage: &'l Linkage<'l>,
-}
-
-/// Why link-grammar guessed a [`Word`] instead of finding it in the
-/// dictionary. Each variant is the mark it prints in brackets.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum WordGuess {
-    /// `[!]`, a match for one of the dictionary's regular expressions,
-    /// such as a number.
-    Regex,
-    /// `[~]`, a spelling correction.
-    Spelling,
-    /// `[&]`, a part of a run-on word that link-grammar split.
-    RunOn,
-    /// `[?]`, a word the dictionary doesn't have, whose part of speech
-    /// link-grammar guessed from the sentence.
-    Unknown,
 }
 
 impl<'l> Word<'l> {
@@ -56,12 +37,6 @@ impl<'l> Word<'l> {
         })
     }
 
-    /// The first link at the word whose label names `relation`. Use
-    /// [`links`](Self::links) to find every such link.
-    pub fn link(self, relation: Relation) -> Option<Link<'l>> {
-        self.links().find(|link| link.relation() == Some(relation))
-    }
-
     /// The word itself, without its guess mark or subscript, such as
     /// `lander` in `lander[?].n`.
     pub fn text(self) -> &'l str {
@@ -73,38 +48,6 @@ impl<'l> Word<'l> {
         }
     }
 
-    /// The subscript of the dictionary entry the word matched, such as `n`
-    /// in `lander[?].n`.
-    pub fn subscript(self) -> Option<&'l str> {
-        self.entry()?
-            .rsplit_once(SUBSCRIPT_MARK)
-            .map(|(_, subscript)| subscript)
-            .filter(|&subscript| subscript != IDIOM_SUBSCRIPT)
-    }
-
-    /// Why the dictionary guessed the word, if it did.
-    pub fn guess(self) -> Option<WordGuess> {
-        self.disjunct().and_then(|_| {
-            self.linkage.internals().word_nodes()[self.index].guess()
-        })
-    }
-
-    /// The word class the [`subscript`](Self::subscript) names. It is
-    /// `None` for a word without a subscript, for a subscript that names
-    /// a narrower group, and for every language but English.
-    pub fn part_of_speech(self) -> Option<PartOfSpeech> {
-        match self.linkage.language() {
-            Some(Language::English) => {
-                PartOfSpeech::from_english_subscript(self.subscript()?)
-            }
-            _ => None,
-        }
-    }
-
-    /// Whether the linkage leaves the word unlinked, which happens only
-    /// when no linkage connects every word.
-    pub fn is_unlinked(self) -> bool { self.disjunct().is_none() }
-
     /// The dictionary entry the word used, such as `dog\x03n`, or `None`
     /// for an unlinked word.
     fn entry(self) -> Option<&'l str> { Some(self.disjunct()?.entry()) }
@@ -115,7 +58,7 @@ impl<'l> Word<'l> {
     }
 
     /// The printed form without its brackets, if the word is unlinked.
-    pub(crate) fn unlinked_inner(self) -> Option<&'l str> {
+    fn unlinked_inner(self) -> Option<&'l str> {
         self.as_str()
             .strip_prefix('[')
             .and_then(|inner| inner.strip_suffix(']'))
@@ -150,24 +93,16 @@ impl Hash for Word<'_> {
     }
 }
 
-/// The printed form and position, followed by what the crate reads about
-/// the word.
+/// The printed form and position, followed by the word's text.
 impl fmt::Debug for Word<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Word")
             .field("printed", &self.as_str())
             .field("index", &self.index)
             .field("text", &self.text())
-            .field("guess", &self.guess())
-            .field("subscript", &self.subscript())
-            .field("part_of_speech", &self.part_of_speech())
-            .field("unlinked", &self.is_unlinked())
             .finish()
     }
 }
 
 /// The mark between a dictionary entry's word and its subscript.
 const SUBSCRIPT_MARK: char = internals::SUBSCRIPT_MARK as char;
-
-/// The subscript link-grammar gives idiom words, which it doesn't print.
-const IDIOM_SUBSCRIPT: &str = "_I";

@@ -35,7 +35,7 @@ The build compiles link-grammar 5.13.2 from the sources that
 only a C compiler. It supports Linux with glibc and macOS for now.
 
 Only English ships with the crate. Load the others with
-`Dictionary::set_data_dir` or `Dictionary::from_path`.
+`Dictionary::set_data_dir`.
 
 ## License
 

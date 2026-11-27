@@ -8,7 +8,7 @@ use link_grammar_sys::internals;
 
 use crate::c_str_ext::CStrPtr;
 use crate::link_types::LinkTypeId;
-use crate::{Dictionary, Linkage, Subscript, WordGuess};
+use crate::{Dictionary, Linkage, Subscript};
 
 impl Linkage<'_> {
     /// The linkage's private fields.
@@ -47,17 +47,6 @@ pub(crate) impl internals::Linkage_s {
         unsafe {
             slice::from_raw_parts(
                 self.chosen_disjuncts.cast(),
-                self.num_words,
-            )
-        }
-    }
-
-    /// The word-graph node of each word.
-    fn word_nodes(&self) -> &[&internals::Gword_struct] {
-        // SAFETY: `wg_path_display` holds a node per word.
-        unsafe {
-            slice::from_raw_parts(
-                self.wg_path_display.cast(),
                 self.num_words,
             )
         }
@@ -141,22 +130,6 @@ pub(crate) impl internals::Disjunct_struct {
         // NUL-terminated string in the dictionary or the sentence.
         unsafe {
             self.__bindgen_anon_1.__bindgen_anon_1.word_string.as_utf8()
-        }
-    }
-}
-
-#[ext(name = WordNode)]
-pub(crate) impl internals::Gword_struct {
-    /// Why link-grammar guessed the word, by the rule it prints guess
-    /// marks with (`linkage/linkage.c:635`).
-    fn guess(&self) -> Option<WordGuess> {
-        match self.status & internals::WS_GUESS {
-            0 if self.status & internals::WS_INDICT != 0 => None,
-            0 => Some(WordGuess::Unknown),
-            internals::WS_SPELL => Some(WordGuess::Spelling),
-            internals::WS_RUNON => Some(WordGuess::RunOn),
-            internals::WS_REGEX => Some(WordGuess::Regex),
-            _ => unreachable!("link-grammar sets one guess bit at most"),
         }
     }
 }

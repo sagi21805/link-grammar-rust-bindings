@@ -31,14 +31,8 @@ impl Dictionary {
         Self::create(OsStr::new(language.code()))
     }
 
-    /// Loads the dictionary in the directory `path`, which holds
-    /// `4.0.dict` and the files it includes.
-    pub fn from_path(path: &Path) -> Result<Self> {
-        Self::create(path.as_os_str())
-    }
-
     /// Loads the dictionary that `dictionary_create_lang` finds for
-    /// `name`, a language code or a path.
+    /// `name`, a language code.
     fn create(name: &OsStr) -> Result<Self> {
         let c_name = CString::new(name.as_encoded_bytes())?;
         let _guard = DATA_DIR_LOCK.lock().expect("no panic while locked");
@@ -72,8 +66,7 @@ impl Dictionary {
     }
 
     /// The language of the dictionary, which link-grammar takes from the
-    /// name of its directory. It is `None` for a directory
-    /// [`from_path`](Self::from_path) loads whose name isn't a
+    /// name of its directory. It is `None` when that name isn't a
     /// [`Language::code`].
     pub fn language(&self) -> Option<Language> { self.language }
 
