@@ -3,6 +3,7 @@
 mod command_ext;
 mod package_check;
 mod regen;
+mod relations;
 
 use std::env;
 use std::error::Error;
@@ -11,6 +12,7 @@ use std::process::ExitCode;
 
 use crate::package_check::PackageCheck;
 use crate::regen::Regen;
+use crate::relations::Relations;
 
 fn main() -> ExitCode {
     let result: Result<(), Box<dyn Error>> = match env::args()
@@ -18,11 +20,16 @@ fn main() -> ExitCode {
         .as_deref()
     {
         Some("regen") => Regen::new(workspace()).run().map_err(Into::into),
+        Some("relations") => {
+            Relations::new(workspace()).run().map_err(Into::into)
+        }
         Some("package-check") => {
             PackageCheck::new(workspace()).run().map_err(Into::into)
         }
         _ => {
-            eprintln!("usage: cargo xtask <regen | package-check>");
+            eprintln!(
+                "usage: cargo xtask <regen | relations | package-check>"
+            );
             return ExitCode::FAILURE;
         }
     };
