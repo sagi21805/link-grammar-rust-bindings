@@ -13,7 +13,7 @@ use crate::command_ext::{CommandError, CommandExt};
 /// relative to `link-grammar/src/`.
 const LANGUAGES: &[GeneratedLanguage] = &[GeneratedLanguage {
     code: "en",
-    path: "relation.rs",
+    path: "english/relation.rs",
 }];
 
 /// A language whose enum `cargo xtask relations` writes.
