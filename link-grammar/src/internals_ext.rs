@@ -58,20 +58,13 @@ pub(crate) impl internals::Link_s {
     fn link_type(&self) -> u32 { self.left_end().uc_num }
 
     /// The OR of both ends' subscripts, the way `intersect_strings`
-    /// computes the label.
+    /// computes the printed label.
     fn subscript(&self) -> Subscript {
         let letters =
             |end: &internals::condesc_struct| end.lc_letters >> 1;
         Subscript::from_bits(
             letters(self.left_end()) | letters(self.right_end()),
         )
-    }
-
-    /// The label, such as `Ss*s`.
-    fn label(&self) -> &str {
-        // SAFETY: `link_name` is a NUL-terminated string in the sentence's
-        // string set, which outlives the linkage.
-        unsafe { self.link_name.as_utf8() }
     }
 
     /// The descriptor of the link's left connector.

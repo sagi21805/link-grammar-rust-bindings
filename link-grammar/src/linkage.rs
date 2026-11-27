@@ -7,9 +7,7 @@ use link_grammar_sys as sys;
 use crate::c_str_ext::CStrPtr;
 use crate::english::English;
 use crate::internals_ext::{LinkInternals, LinkageInternals};
-use crate::{
-    Language, LinkLabel, LinkRelation, Sentence, Subscript, Word,
-};
+use crate::{Language, LinkLabel, LinkRelation, Sentence, Word};
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
@@ -40,17 +38,13 @@ impl<'l, L: Language> Link<'l, L> {
         self.linkage.word(self.right)
     }
 
-    /// The relation the link's [`LinkType`](crate::LinkType) names.
-    pub fn relation(&self) -> L::Relation {
-        L::Relation::from_number(self.raw().link_type())
-    }
-
-    /// The lowercase part of the link's label, such as `s*s` in `Ss*s`.
-    pub fn subscript(&self) -> Subscript { self.raw().subscript() }
-
-    /// The label link-grammar prints for the link, such as `Ss*s`.
-    pub fn label(&self) -> LinkLabel<'l> {
-        LinkLabel::new(self.raw().label())
+    /// The link's label, such as `MVp`.
+    pub fn label(&self) -> LinkLabel<L::Relation> {
+        let raw = self.raw();
+        LinkLabel {
+            relation: L::Relation::from_number(raw.link_type()),
+            subscript: raw.subscript(),
+        }
     }
 
     /// The link's private fields.

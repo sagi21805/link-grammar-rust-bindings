@@ -31,25 +31,23 @@ pub(crate) fn check_corpus<L: Language>() {
     }
 }
 
-/// Every link's label, relation, subscript and ends, read both ways. A
+/// Every link's label and ends, read both ways. A
 /// wrong struct layout, say after the submodule tag moves, gives garbage
 /// or undefined behaviour with no compile error, and this catches it.
 fn assert_links_agree<L: Language>(text: &str, linkage: &Linkage<'_, L>) {
     for (index, link) in linkage.links().enumerate() {
-        let label = c_label(linkage, index);
-        assert_eq!(link.label().as_str(), label, "{link:?} in {text:?}");
-        let name = link.label().link_type().as_str();
-        match link.relation().code() {
+        let printed = c_label(linkage, index);
+        let label = link.label();
+        match label.relation.code() {
             "_I" => {
-                assert!(name.starts_with("_I"), "{link:?} in {text:?}")
+                assert!(printed.starts_with("_I"), "{link:?} in {text:?}")
             }
-            code => assert_eq!(code, name, "{link:?} in {text:?}"),
+            _ => assert_eq!(
+                label.to_string(),
+                printed,
+                "{link:?} in {text:?}",
+            ),
         }
-        assert_eq!(
-            link.subscript(),
-            link.label().subscript(),
-            "subscript of {link:?} in {text:?}",
-        );
         assert_eq!(
             (link.left, link.right),
             c_ends(linkage, index),

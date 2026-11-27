@@ -51,7 +51,7 @@ impl Subscript {
         }
     }
 
-    /// Packs a subscript link-grammar printed, which needs no checks.
+    /// Packs a subscript that is known to be well formed, without checks.
     pub(crate) const fn from_label(subscript: &str) -> Self {
         let bytes = subscript.as_bytes();
         let mut bits = 0;
