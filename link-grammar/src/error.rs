@@ -8,9 +8,15 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error(
         "no dictionary for `{0}` was found. Point \
-         `Dictionary::set_data_dir` at a directory that contains it"
+         `link_grammar::set_data_dir` at a directory that contains it"
     )]
     DictionaryNotFound(String),
+
+    #[error(
+        "the generated relations don't match the dictionary. Run `cargo \
+         xtask relations`"
+    )]
+    StaleRelations,
 
     #[error("text passed to link-grammar must not contain a NUL byte")]
     InteriorNul(#[from] NulError),

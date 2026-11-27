@@ -2,21 +2,13 @@
 //!
 //! A [`Dictionary`] holds a language's grammar. A [`Sentence`] borrows it,
 //! and parsing the sentence finds its [`Linkage`]s, each a set of
-//! [`Link`]s between words. A link's [`LinkLabel`] splits into a
-//! [`LinkType`], which names a [`Relation`], and a [`Subscript`]. A
-//! [`Word`]'s subscript names its [`PartOfSpeech`].
+//! [`Link`]s between [`Word`]s. A link's [`LinkLabel`] holds a relation
+//! and a [`Subscript`].
 //!
-//! ```
-//! use link_grammar::{Dictionary, Language, Sentence};
-//!
-//! let dictionary = Dictionary::new(Language::English)?;
-//! let mut sentence = Sentence::new(&dictionary, "The lander landed.")?;
-//! sentence.parse()?;
-//! for linkage in sentence.linkages() {
-//!     println!("{}", linkage.diagram(80));
-//! }
-//! # Ok::<(), link_grammar::Error>(())
-//! ```
+//! Each [`Language`] is a marker type, such as [`english::English`], with
+//! its own relation enum, such as [`english::Relation`], which has one
+//! variant per link type. A type that leaves the language out means
+//! English.
 //!
 //! [link-grammar]: https://github.com/opencog/link-grammar
 
@@ -25,34 +17,26 @@ mod macros;
 
 mod c_str_ext;
 mod dictionary;
-#[cfg(all(test, feature = "bundled"))]
+#[cfg(test)]
 mod differential_tests;
+pub mod english;
 mod error;
-#[cfg(feature = "bundled")]
 mod internals_ext;
 mod language;
 mod link_label;
-#[cfg(feature = "bundled")]
-mod link_types;
 mod linkage;
 mod parse_options;
-mod part_of_speech;
-mod relation;
-mod relation_subscript;
 mod sentence;
-pub mod subscript;
+mod subscript;
 mod verbosity;
 mod word;
 
-pub use dictionary::Dictionary;
+pub use dictionary::{Dictionary, set_data_dir};
 pub use error::{Error, Result};
-pub use language::Language;
-pub use link_label::{LinkLabel, LinkType};
+pub use language::{Language, LinkRelation};
+pub use link_label::LinkLabel;
 pub use linkage::{Link, Linkage};
-pub use part_of_speech::PartOfSpeech;
-pub use relation::Relation;
-pub use relation_subscript::RelationSubscript;
 pub use sentence::Sentence;
 pub use subscript::Subscript;
 pub use verbosity::{Verbosity, set_verbosity};
-pub use word::{Word, WordGuess};
+pub use word::Word;

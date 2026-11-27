@@ -1,10 +1,12 @@
 use std::ffi::{CString, c_int};
+use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use link_grammar_sys as sys;
 
+use crate::english::English;
 use crate::parse_options::ParseOptions;
-use crate::{Dictionary, Error, Linkage, Result};
+use crate::{Dictionary, Error, Language, Linkage, Result};
 
 /// A sentence to parse with a [`Dictionary`].
 ///
@@ -13,8 +15,9 @@ use crate::{Dictionary, Error, Linkage, Result};
 /// code that keeps a [`Linkage`] across a reparse.
 ///
 /// ```compile_fail,E0502
-/// # use link_grammar::{Dictionary, Language, Sentence};
-/// # let dictionary = Dictionary::new(Language::English)?;
+/// # use link_grammar::english::English;
+/// # use link_grammar::{Dictionary, Sentence};
+/// # let dictionary = Dictionary::new(English)?;
 /// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
 /// sentence.parse()?;
 /// let first = sentence.linkage(0);
@@ -23,17 +26,18 @@ use crate::{Dictionary, Error, Linkage, Result};
 /// drop(first);
 /// # Ok::<(), link_grammar::Error>(())
 /// ```
-pub struct Sentence<'d> {
+pub struct Sentence<'d, L: Language = English> {
     raw: NonNull<sys::Sentence_s>,
     /// The linkages the last parse kept, best first, and empty before one
     /// succeeds.
     linkages: Vec<NonNull<sys::Linkage_s>>,
-    dictionary: &'d Dictionary,
+    /// The C sentence points into the dictionary.
+    dictionary: PhantomData<&'d Dictionary<L>>,
 }
 
-impl<'d> Sentence<'d> {
+impl<'d, L: Language> Sentence<'d, L> {
     /// Copies `text` into a sentence that `dictionary` will parse.
-    pub fn new(dictionary: &'d Dictionary, text: &str) -> Result<Self> {
+    pub fn new(dictionary: &'d Dictionary<L>, text: &str) -> Result<Self> {
         let c_text = CString::new(text)?;
         // SAFETY: `c_text` is NUL-terminated and link-grammar copies it.
         // The `'d` borrow keeps `dictionary` alive while the sentence
@@ -46,7 +50,7 @@ impl<'d> Sentence<'d> {
         Ok(Self {
             raw,
             linkages: Vec::new(),
-            dictionary,
+            dictionary: PhantomData,
         })
     }
 
@@ -75,7 +79,7 @@ impl<'d> Sentence<'d> {
 
     /// The linkage at `index`, or `None` past the last one the parse
     /// kept or before the first parse.
-    pub fn linkage(&self, index: usize) -> Option<Linkage<'_>> {
+    pub fn linkage(&self, index: usize) -> Option<Linkage<'_, L>> {
         let raw = *self.linkages.get(index)?;
         // SAFETY: `raw` is a linkage of this sentence, and the returned
         // `Linkage` borrows `self`, so no reparse happens while it lives.
@@ -83,7 +87,9 @@ impl<'d> Sentence<'d> {
     }
 
     /// Every linkage the parse kept, best first.
-    pub fn linkages(&self) -> impl ExactSizeIterator<Item = Linkage<'_>> {
+    pub fn linkages(
+        &self,
+    ) -> impl ExactSizeIterator<Item = Linkage<'_, L>> {
         (0..self.linkages.len()).map(|index| {
             self.linkage(index)
                 .expect("index is below the linkage count")
@@ -146,14 +152,11 @@ impl<'d> Sentence<'d> {
             .expect("link-grammar's counts are never negative")
     }
 
-    /// The dictionary the sentence is parsed with.
-    pub(crate) fn dictionary(&self) -> &'d Dictionary { self.dictionary }
-
     /// The handle the C API takes.
     fn as_raw(&self) -> sys::Sentence { self.raw.as_ptr() }
 }
 
-impl Drop for Sentence<'_> {
+impl<L: Language> Drop for Sentence<'_, L> {
     fn drop(&mut self) {
         // SAFETY: `raw` came from `sentence_create`, and every linkage
         // borrowing it is already gone.

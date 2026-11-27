@@ -1,41 +1,12 @@
-//! The lowercase part of a link label, packed into a number, and the
-//! structs that name its letters.
-//!
-//! To name the letters of another relation, follow `subscript/README.md`.
+//! The lowercase part of a link label, packed into a number.
 
 use std::fmt::{self, Write};
-
-pub use object::{Object, ObjectFlag, ObjectKind, ObjectUse};
-pub use subject::{Subject, SubjectConstraint, SubjectFlag, SubjectKind};
-
-#[cfg(all(test, feature = "bundled"))]
-mod coverage_tests;
-mod object;
-mod subject;
 
 /// The lowercase part of a link label, such as `p` in `MVp`, with up to 9
 /// positions. Each position holds a letter or a `*`, which matches any
 /// letter.
-///
-/// ```
-/// use link_grammar::Subscript;
-///
-/// let question_word = Subscript::new("**w");
-/// assert_eq!(question_word.get(0), None);
-/// assert_eq!(question_word.get(2), Some('w'));
-/// // `get` reads what the link is marked with, and `matches` says what
-/// // could connect to it. A `*` connects to any letter.
-/// assert!(question_word.matches(Subscript::new("s")));
-/// assert!(!question_word.matches(Subscript::new("**q")));
-/// ```
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Subscript(u64);
-
-/// The letters one subscript position takes, named.
-pub(crate) trait SubscriptLetter: Sized {
-    /// The variant for `letter`, which is 0 for a `*`.
-    fn from_letter(letter: u8) -> Option<Self>;
-}
 
 /// The bits each position takes.
 const LETTER_BITS: usize = 7;
@@ -47,7 +18,7 @@ const LETTER_MASK: u64 = 0x7f;
 const POSITIONS: usize = 9;
 
 impl Subscript {
-    /// No subscript, as in a bare `S`. It matches every subscript.
+    /// No subscript, as in a bare `S`.
     pub const EMPTY: Self = Self(0);
 
     /// Packs `subscript`, such as `"s*s"`. In a `const` item a bad
@@ -80,18 +51,7 @@ impl Subscript {
         }
     }
 
-    /// Whether link-grammar would connect the two, because they agree at
-    /// every position where both have a letter.
-    pub const fn matches(self, other: Self) -> bool {
-        (self.0 ^ other.0) & self.letter_mask() & other.letter_mask() == 0
-    }
-
-    /// link-grammar's `lc_letters` without its head bit. Each position
-    /// takes 7 bits holding the letter's ASCII value, position 0 lowest,
-    /// and a `*` or a position past the end is 0.
-    pub const fn to_bits(self) -> u64 { self.0 }
-
-    /// Packs a subscript link-grammar printed, which needs no checks.
+    /// Packs a subscript that is known to be well formed, without checks.
     pub(crate) const fn from_label(subscript: &str) -> Self {
         let bytes = subscript.as_bytes();
         let mut bits = 0;
@@ -107,7 +67,6 @@ impl Subscript {
     }
 
     /// Wraps bits read from a connector descriptor.
-    #[cfg(feature = "bundled")]
     pub(crate) const fn from_bits(bits: u64) -> Self { Self(bits) }
 
     /// The ASCII letter at `position`, or 0 for a `*` or a position past
@@ -119,19 +78,6 @@ impl Subscript {
             }
             _ => 0,
         }
-    }
-
-    /// `0x7f` at every position that holds a letter.
-    const fn letter_mask(self) -> u64 {
-        let mut mask = 0;
-        let mut position = 0;
-        while position < POSITIONS {
-            if self.letter(position) != 0 {
-                mask |= LETTER_MASK << (position * LETTER_BITS);
-            }
-            position += 1;
-        }
-        mask
     }
 }
 

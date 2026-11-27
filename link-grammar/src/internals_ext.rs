@@ -1,5 +1,5 @@
-//! Readers over link-grammar's private structs, which the bundled build
-//! knows the layouts of. Every pointer walk into them is here.
+//! Readers over link-grammar's private structs, whose layouts
+//! `link-grammar-sys` declares. Every pointer walk into them is here.
 
 use std::slice;
 
@@ -7,10 +7,9 @@ use extend::ext;
 use link_grammar_sys::internals;
 
 use crate::c_str_ext::CStrPtr;
-use crate::link_types::LinkTypeId;
-use crate::{Dictionary, Linkage, Subscript, WordGuess};
+use crate::{Dictionary, Language, Linkage, Subscript};
 
-impl Linkage<'_> {
+impl<L: Language> Linkage<'_, L> {
     /// The linkage's private fields.
     pub(crate) fn internals(&self) -> &internals::Linkage_s {
         // SAFETY: `raw` came from `linkage_create`, so it points to a full
@@ -19,7 +18,7 @@ impl Linkage<'_> {
     }
 }
 
-impl Dictionary {
+impl<L: Language> Dictionary<L> {
     /// The dictionary's private fields.
     pub(crate) fn internals(&self) -> &internals::Dictionary_s {
         // SAFETY: `raw` came from `dictionary_create_lang`, so it points
@@ -51,41 +50,21 @@ pub(crate) impl internals::Linkage_s {
             )
         }
     }
-
-    /// The word-graph node of each word.
-    fn word_nodes(&self) -> &[&internals::Gword_struct] {
-        // SAFETY: `wg_path_display` holds a node per word.
-        unsafe {
-            slice::from_raw_parts(
-                self.wg_path_display.cast(),
-                self.num_words,
-            )
-        }
-    }
 }
 
 #[ext(name = LinkInternals)]
 pub(crate) impl internals::Link_s {
     /// The number of the link's uppercase part, which both ends share.
-    fn link_type(&self) -> LinkTypeId {
-        LinkTypeId::new(self.left_end().uc_num)
-    }
+    fn link_type(&self) -> u32 { self.left_end().uc_num }
 
     /// The OR of both ends' subscripts, the way `intersect_strings`
-    /// computes the label.
+    /// computes the printed label.
     fn subscript(&self) -> Subscript {
         let letters =
             |end: &internals::condesc_struct| end.lc_letters >> 1;
         Subscript::from_bits(
             letters(self.left_end()) | letters(self.right_end()),
         )
-    }
-
-    /// The label, such as `Ss*s`.
-    fn label(&self) -> &str {
-        // SAFETY: `link_name` is a NUL-terminated string in the sentence's
-        // string set, which outlives the linkage.
-        unsafe { self.link_name.as_utf8() }
     }
 
     /// The descriptor of the link's left connector.
@@ -122,20 +101,6 @@ pub(crate) impl internals::Dictionary_s {
 
 #[ext(name = ConnectorDescriptor)]
 pub(crate) impl internals::condesc_struct {
-    /// The whole connector string, such as `Ss*t`.
-    #[cfg(test)]
-    fn connector(&self) -> &str {
-        // SAFETY: `more` and its `string` live as long as the dictionary.
-        unsafe { (*self.more).string.as_utf8() }
-    }
-
-    /// The connector's subscript, the same bits a link's subscript
-    /// takes from its two ends.
-    #[cfg(test)]
-    fn subscript(&self) -> Subscript {
-        Subscript::from_bits(self.lc_letters >> 1)
-    }
-
     /// The connector's uppercase part, such as `MV` in `MVp`.
     fn link_type_name(&self) -> &str {
         // SAFETY: `more` and its `string` live as long as the dictionary.
@@ -155,22 +120,6 @@ pub(crate) impl internals::Disjunct_struct {
         // NUL-terminated string in the dictionary or the sentence.
         unsafe {
             self.__bindgen_anon_1.__bindgen_anon_1.word_string.as_utf8()
-        }
-    }
-}
-
-#[ext(name = WordNode)]
-pub(crate) impl internals::Gword_struct {
-    /// Why link-grammar guessed the word, by the rule it prints guess
-    /// marks with (`linkage/linkage.c:635`).
-    fn guess(&self) -> Option<WordGuess> {
-        match self.status & internals::WS_GUESS {
-            0 if self.status & internals::WS_INDICT != 0 => None,
-            0 => Some(WordGuess::Unknown),
-            internals::WS_SPELL => Some(WordGuess::Spelling),
-            internals::WS_RUNON => Some(WordGuess::RunOn),
-            internals::WS_REGEX => Some(WordGuess::Regex),
-            _ => unreachable!("link-grammar sets one guess bit at most"),
         }
     }
 }

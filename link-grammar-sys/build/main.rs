@@ -1,5 +1,4 @@
-//! Compiles link-grammar from the submodule with the `bundled` feature,
-//! or finds a system install through pkg-config without it.
+//! Compiles link-grammar from the submodule and links it statically.
 
 mod defines;
 mod link_features;
@@ -10,19 +9,7 @@ use std::path::{Path, PathBuf};
 use crate::defines::Target;
 use crate::link_features::LinkFeatures;
 
-fn main() {
-    match env::var_os("CARGO_FEATURE_BUNDLED") {
-        Some(_) => LinkGrammarBuild::new().run(),
-        None => {
-            if let Err(error) = pkg_config::probe_library("link-grammar") {
-                panic!(
-                    "{error}\nInstall link-grammar, or turn on the \
-                     `bundled` feature to compile it from source."
-                );
-            }
-        }
-    }
-}
+fn main() { LinkGrammarBuild::new().run() }
 
 /// The `.c` entries of `liblink_grammar_la_SOURCES` in
 /// `link-grammar/Makefile.am`, in its order. The C++ files of
@@ -91,7 +78,7 @@ const SOURCES: &[&str] = &[
     "utilities.c",
 ];
 
-/// The bundled build, which compiles link-grammar's C sources with `cc`
+/// The build, which compiles link-grammar's C sources with `cc`
 /// into a static library.
 struct LinkGrammarBuild {
     crate_dir: PathBuf,
@@ -177,10 +164,8 @@ impl Target {
             ("linux", "gnu", "64") => Self::LinuxGnu,
             ("macos", _, "64") => Self::MacOs,
             _ => panic!(
-                "The bundled link-grammar build doesn't support the \
-                 {width}-bit {os}-{libc} target yet. Install \
-                 link-grammar and turn off the `bundled` feature with \
-                 `default-features = false`."
+                "The link-grammar build doesn't support the {width}-bit \
+                 {os}-{libc} target yet."
             ),
         }
     }

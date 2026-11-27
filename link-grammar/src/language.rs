@@ -1,34 +1,24 @@
-use std::fmt;
+use std::fmt::Debug;
+use std::hash::Hash;
 
-coded_enum! {
-    /// A language that link-grammar has a dictionary for. Its
-    /// [`code`](Self::code) is the name of its dictionary directory, such
-    /// as `"en"`.
-    ///
-    /// Only [`English`](Self::English) ships with this crate. The others
-    /// need their dictionary directory from link-grammar's `data/`, which
-    /// [`Dictionary::set_data_dir`](crate::Dictionary::set_data_dir)
-    /// points at.
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-    #[non_exhaustive]
-    pub enum Language {
-        "ar" => Arabic,
-        "en" => English,
-        "de" => German,
-        "he" => Hebrew,
-        "id" => Indonesian,
-        "kz" => Kazakh,
-        "lt" => Lithuanian,
-        "fa" => Persian,
-        "ru" => Russian,
-        "th" => Thai,
-        "tr" => Turkish,
-        "vn" => Vietnamese,
-    }
+/// A language link-grammar can parse, as a marker type. The supertraits
+/// let types that carry a language derive their own traits.
+///
+/// Only [`English`](crate::english::English) ships with this crate.
+/// Another language needs its dictionary directory from link-grammar's
+/// `data/`, which [`set_data_dir`](crate::set_data_dir) points at.
+pub trait Language: Copy + Default + Eq + Hash + Debug + 'static {
+    /// The relations the language's link types name.
+    type Relation: LinkRelation;
+    /// The name of the dictionary's directory, such as `en`.
+    const CODE: &'static str;
 }
 
-impl fmt::Display for Language {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.code())
-    }
+/// The relations one language's link types name, one variant per link
+/// type number.
+pub trait LinkRelation: Copy + Eq + Hash + Debug + 'static {
+    /// The variant for a link type number of the language's dictionary.
+    fn from_number(number: u32) -> Self;
+    /// The link type, such as `MV`, or `_I` for an idiom.
+    fn code(self) -> &'static str;
 }
