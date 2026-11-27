@@ -7,7 +7,6 @@ use extend::ext;
 use link_grammar_sys::internals;
 
 use crate::c_str_ext::CStrPtr;
-use crate::link_types::LinkTypeId;
 use crate::{Dictionary, Linkage, Subscript};
 
 impl Linkage<'_> {
@@ -56,9 +55,7 @@ pub(crate) impl internals::Linkage_s {
 #[ext(name = LinkInternals)]
 pub(crate) impl internals::Link_s {
     /// The number of the link's uppercase part, which both ends share.
-    fn link_type(&self) -> LinkTypeId {
-        LinkTypeId::new(self.left_end().uc_num)
-    }
+    fn link_type(&self) -> u32 { self.left_end().uc_num }
 
     /// The OR of both ends' subscripts, the way `intersect_strings`
     /// computes the label.

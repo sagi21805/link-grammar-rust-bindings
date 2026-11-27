@@ -18,7 +18,6 @@ mod error;
 mod internals_ext;
 mod language;
 mod link_label;
-mod link_types;
 mod linkage;
 mod parse_options;
 mod relation;

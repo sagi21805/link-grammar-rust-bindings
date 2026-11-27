@@ -6,8 +6,8 @@ use std::sync::Mutex;
 use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
-use crate::link_types::LinkTypes;
-use crate::{Error, Language, Result};
+use crate::internals_ext::{ConnectorDescriptor, DictionaryInternals};
+use crate::{Error, Language, Relation, Result};
 
 /// The grammar and word list of one language.
 ///
@@ -18,7 +18,6 @@ use crate::{Error, Language, Result};
 pub struct Dictionary {
     raw: NonNull<sys::Dictionary_s>,
     language: Option<Language>,
-    link_types: LinkTypes,
 }
 
 impl Dictionary {
@@ -45,13 +44,11 @@ impl Dictionary {
         let code =
             unsafe { sys::dictionary_get_lang(raw.as_ptr()).as_utf8() };
         let language = Language::from_code(code);
-        let mut dictionary = Self {
-            raw,
-            language,
-            link_types: LinkTypes::default(),
-        };
-        dictionary.link_types =
-            LinkTypes::new(dictionary.internals(), language);
+        let dictionary = Self { raw, language };
+        if language == Some(Language::English) {
+            // A failure drops `dictionary`, which deletes it.
+            dictionary.check_relations()?;
+        }
         Ok(dictionary)
     }
 
@@ -70,8 +67,21 @@ impl Dictionary {
     /// [`Language::code`].
     pub fn language(&self) -> Option<Language> { self.language }
 
-    /// The relation of each of the dictionary's link type numbers.
-    pub(crate) fn link_types(&self) -> &LinkTypes { &self.link_types }
+    /// Fails unless each link type number names the variant whose code is
+    /// the link type. A stale enum fails here instead of mislabelling
+    /// links.
+    fn check_relations(&self) -> Result<()> {
+        let stale = self.internals().connectors().any(|connector| {
+            let name = connector.link_type_name();
+            let expected =
+                if name.starts_with("_I") { "_I" } else { name };
+            Relation::from_number(connector.uc_num).code() != expected
+        });
+        if stale {
+            return Err(Error::StaleRelations);
+        }
+        Ok(())
+    }
 
     /// The handle the C API takes.
     pub(crate) fn as_raw(&self) -> sys::Dictionary { self.raw.as_ptr() }

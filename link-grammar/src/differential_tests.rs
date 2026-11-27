@@ -38,11 +38,14 @@ fn assert_links_agree(text: &str, linkage: &Linkage<'_>) {
         let label = c_label(linkage, index);
         assert_eq!(link.label().as_str(), label, "{link:?} in {text:?}");
         let name = link.label().link_type().as_str();
-        assert_eq!(
-            link.relation(),
-            Relation::from_english_link_type(name),
-            "relation of {link:?} in {text:?}",
-        );
+        match link.relation().expect("the corpus is English") {
+            Relation::Idiom => {
+                assert!(name.starts_with("_I"), "{link:?} in {text:?}")
+            }
+            relation => {
+                assert_eq!(relation.code(), name, "{link:?} in {text:?}")
+            }
+        }
         assert_eq!(
             link.subscript(),
             link.label().subscript(),

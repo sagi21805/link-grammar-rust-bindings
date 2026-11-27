@@ -12,6 +12,12 @@ pub enum Error {
     )]
     DictionaryNotFound(String),
 
+    #[error(
+        "the generated relations don't match the dictionary. Run `cargo \
+         xtask relations`"
+    )]
+    StaleRelations,
+
     #[error("text passed to link-grammar must not contain a NUL byte")]
     InteriorNul(#[from] NulError),
 
