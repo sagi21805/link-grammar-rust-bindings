@@ -1,6 +1,6 @@
 //! `cargo xtask regen` rewrites the generated files that
 //! `link-grammar-sys` commits, so its users need neither libclang nor
-//! flex.
+//! flex, and then each language's relation enum.
 
 #[path = "../../link-grammar-sys/build/defines.rs"]
 mod defines;
@@ -16,6 +16,7 @@ use thiserror::Error;
 
 use crate::command_ext::{CommandError, CommandExt};
 use crate::regen::defines::Target;
+use crate::relations::{Relations, RelationsError};
 
 /// The private headers that declare what `link-grammar-sys::internals`
 /// holds, relative to `link-grammar/link-grammar`.
@@ -75,13 +76,17 @@ impl Regen {
     /// The generated files of the workspace at `workspace`.
     pub fn new(workspace: PathBuf) -> Self { Self { workspace } }
 
-    /// Regenerates `src/bindings.rs`, `src/internals.rs` and
-    /// `generated/pp_lexer.c`.
+    /// Regenerates `src/bindings.rs`, `src/internals.rs`,
+    /// `generated/pp_lexer.c` and the relation enums.
     pub fn run(&self) -> Result<(), RegenError> {
         let builder = self.builder()?;
         self.bindings(builder.clone())?;
         self.internals(builder)?;
-        self.lexer()
+        self.lexer()?;
+        // Last, so the enums read the dictionary through the new layouts.
+        Relations::new(self.workspace.clone())
+            .run()
+            .map_err(RegenError::from)
     }
 
     /// The bindgen settings both runs share, which are the include path,
@@ -203,6 +208,8 @@ impl Regen {
 pub enum RegenError {
     #[error(transparent)]
     Command(#[from] CommandError),
+    #[error(transparent)]
+    Relations(#[from] RelationsError),
     #[error(
         "cargo didn't report where link-grammar-sys's build script wrote"
     )]

@@ -35,6 +35,15 @@ flex installed.
 cargo xtask regen
 ```
 
+Each language's relation enum is generated from its dictionary, with one
+variant per link type. `regen` writes them too. After the generator or a
+dictionary changes, write them on their own, which needs neither libclang
+nor flex.
+
+```sh
+cargo xtask relations
+```
+
 To check that the crate builds from the files it publishes, the way
 crates.io users get it, run:
 
