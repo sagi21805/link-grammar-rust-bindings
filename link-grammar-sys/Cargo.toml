@@ -26,15 +26,8 @@ include = [
     "/link-grammar/data/en/**",
 ]
 
-[features]
-default = ["bundled"]
-# Compiles link-grammar from the bundled sources. Without it, the build
-# finds a system install through pkg-config.
-bundled = []
-
 [dependencies]
 libc = "0.2"
 
 [build-dependencies]
 cc = "1"
-pkg-config = "0.3"

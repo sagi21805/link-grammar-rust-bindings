@@ -18,7 +18,7 @@ jobs:
           components: rustfmt
       - run: cargo +nightly fmt --all --check
 
-  bundled:
+  test:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -34,23 +34,3 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
       - run: cargo xtask package-check
-
-  system:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y liblink-grammar-dev pkg-config
-      - if: runner.os == 'macOS'
-        run: brew install link-grammar pkgconf
-      - run: pkg-config --modversion link-grammar
-      # The distribution's link-grammar may be older than the submodule,
-      # so its dictionary can find a different number of linkages than
-      # the tests expect. Build and parse one sentence instead.
-      - run: cargo build -p link-grammar --no-default-features --example parse
-      - run: echo "The lander touched down on Mars." | cargo run -p link-grammar --no-default-features --example parse

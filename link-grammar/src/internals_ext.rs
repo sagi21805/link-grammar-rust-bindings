@@ -1,5 +1,5 @@
-//! Readers over link-grammar's private structs, which the bundled build
-//! knows the layouts of. Every pointer walk into them is here.
+//! Readers over link-grammar's private structs, whose layouts
+//! `link-grammar-sys` declares. Every pointer walk into them is here.
 
 use std::slice;
 

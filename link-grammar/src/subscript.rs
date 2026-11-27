@@ -8,7 +8,7 @@ use std::fmt::{self, Write};
 pub use object::{Object, ObjectFlag, ObjectKind, ObjectUse};
 pub use subject::{Subject, SubjectConstraint, SubjectFlag, SubjectKind};
 
-#[cfg(all(test, feature = "bundled"))]
+#[cfg(test)]
 mod coverage_tests;
 mod object;
 mod subject;
@@ -107,7 +107,6 @@ impl Subscript {
     }
 
     /// Wraps bits read from a connector descriptor.
-    #[cfg(feature = "bundled")]
     pub(crate) const fn from_bits(bits: u64) -> Self { Self(bits) }
 
     /// The ASCII letter at `position`, or 0 for a `*` or a position past

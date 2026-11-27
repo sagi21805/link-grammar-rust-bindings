@@ -4,7 +4,6 @@ use std::ptr::NonNull;
 use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
-#[cfg(feature = "bundled")]
 use crate::internals_ext::{LinkInternals, LinkageInternals};
 use crate::{
     Dictionary, Language, LinkLabel, Relation, Sentence, Subscript, Word,
@@ -64,51 +63,21 @@ impl<'l> Link<'l> {
     /// The relation the link's [`LinkType`](crate::LinkType) names. It
     /// is `None` for every language but English.
     pub fn relation(&self) -> Option<Relation> {
-        #[cfg(feature = "bundled")]
-        return self
-            .linkage
+        self.linkage
             .dictionary()
             .link_types()
-            .relation(self.raw().link_type());
-        #[cfg(not(feature = "bundled"))]
-        return self.relation_from_label();
-    }
-
-    /// The relation the label's link type names, read from the printed
-    /// label.
-    #[cfg(not(feature = "bundled"))]
-    pub(crate) fn relation_from_label(&self) -> Option<Relation> {
-        match self.linkage.language() {
-            Some(Language::English) => Relation::from_english_link_type(
-                self.label().link_type().as_str(),
-            ),
-            _ => None,
-        }
+            .relation(self.raw().link_type())
     }
 
     /// The lowercase part of the link's label, such as `s*s` in `Ss*s`.
-    pub fn subscript(&self) -> Subscript {
-        #[cfg(feature = "bundled")]
-        return self.raw().subscript();
-        #[cfg(not(feature = "bundled"))]
-        return self.label().subscript();
-    }
+    pub fn subscript(&self) -> Subscript { self.raw().subscript() }
 
     /// The label link-grammar prints for the link, such as `Ss*s`.
     pub fn label(&self) -> LinkLabel<'l> {
-        #[cfg(feature = "bundled")]
-        return LinkLabel::new(self.raw().label());
-        #[cfg(not(feature = "bundled"))]
-        // SAFETY: `index` is below the link count, and the label lives
-        // as long as the linkage.
-        return LinkLabel::new(unsafe {
-            sys::linkage_get_link_label(self.linkage.as_raw(), self.index)
-                .as_utf8()
-        });
+        LinkLabel::new(self.raw().label())
     }
 
     /// The link's private fields.
-    #[cfg(feature = "bundled")]
     fn raw(&self) -> &'l link_grammar_sys::internals::Link_s {
         &self.linkage.internals().links()[self.index]
     }
@@ -142,10 +111,7 @@ impl PartialEq for Link<'_> {
 impl Link<'_> {
     /// Whether the two links have the same link type.
     fn has_link_type_of(&self, other: &Self) -> bool {
-        #[cfg(feature = "bundled")]
-        return self.raw().link_type() == other.raw().link_type();
-        #[cfg(not(feature = "bundled"))]
-        return self.label().link_type() == other.label().link_type();
+        self.raw().link_type() == other.raw().link_type()
     }
 }
 
@@ -172,7 +138,6 @@ impl<'s> Linkage<'s> {
     }
 
     /// The links of the linkage.
-    #[cfg(feature = "bundled")]
     pub fn links(&self) -> impl ExactSizeIterator<Item = Link<'_>> {
         self.internals()
             .links()
@@ -184,13 +149,6 @@ impl<'s> Linkage<'s> {
                 index,
                 linkage: self,
             })
-    }
-
-    /// The links of the linkage.
-    #[cfg(not(feature = "bundled"))]
-    pub fn links(&self) -> impl ExactSizeIterator<Item = Link<'_>> {
-        let count = unsafe { sys::linkage_get_num_links(self.as_raw()) };
-        (0..count).map(|index| self.link_at(index))
     }
 
     /// The first link whose label names `relation`. Use
@@ -220,26 +178,6 @@ impl<'s> Linkage<'s> {
         let diagram = unsafe { raw.cast_const().as_utf8() }.to_owned();
         unsafe { sys::linkage_free_diagram(raw) };
         diagram
-    }
-
-    /// The link at `index`, which is below the link count.
-    #[cfg(not(feature = "bundled"))]
-    fn link_at(&self, index: usize) -> Link<'_> {
-        let raw = self.as_raw();
-        // SAFETY: `index` is below the link count, so the C API returns
-        // the indices of words in the linkage.
-        let (left, right) = unsafe {
-            (
-                sys::linkage_get_link_lword(raw, index),
-                sys::linkage_get_link_rword(raw, index),
-            )
-        };
-        Link {
-            left,
-            right,
-            index,
-            linkage: self,
-        }
     }
 
     /// The word at `index`, which is below the word count.

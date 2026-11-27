@@ -70,7 +70,6 @@ fn labels_split_into_link_type_and_subscript() -> link_grammar::Result<()>
     Ok(())
 }
 
-#[cfg(feature = "bundled")]
 #[test]
 fn from_path_loads_the_bundled_english() -> link_grammar::Result<()> {
     let path = std::path::Path::new(link_grammar_sys::BUNDLED_DATA_DIR)

@@ -6,7 +6,6 @@ use std::sync::Mutex;
 use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
-#[cfg(feature = "bundled")]
 use crate::link_types::LinkTypes;
 use crate::{Error, Language, Result};
 
@@ -29,7 +28,6 @@ use crate::{Error, Language, Result};
 pub struct Dictionary {
     raw: NonNull<sys::Dictionary_s>,
     language: Option<Language>,
-    #[cfg(feature = "bundled")]
     link_types: LinkTypes,
 }
 
@@ -63,18 +61,13 @@ impl Dictionary {
         let code =
             unsafe { sys::dictionary_get_lang(raw.as_ptr()).as_utf8() };
         let language = Language::from_code(code);
-        #[cfg_attr(not(feature = "bundled"), expect(unused_mut))]
         let mut dictionary = Self {
             raw,
             language,
-            #[cfg(feature = "bundled")]
             link_types: LinkTypes::default(),
         };
-        #[cfg(feature = "bundled")]
-        {
-            dictionary.link_types =
-                LinkTypes::new(dictionary.internals(), language);
-        }
+        dictionary.link_types =
+            LinkTypes::new(dictionary.internals(), language);
         Ok(dictionary)
     }
 
@@ -95,7 +88,6 @@ impl Dictionary {
     pub fn language(&self) -> Option<Language> { self.language }
 
     /// The relation of each of the dictionary's link type numbers.
-    #[cfg(feature = "bundled")]
     pub(crate) fn link_types(&self) -> &LinkTypes { &self.link_types }
 
     /// The handle the C API takes.

@@ -13,8 +13,8 @@ the CMU/OpenCog syntactic parser for English and other languages.
 
 ## Building
 
-[`link-grammar/README.md`](link-grammar/README.md) covers the build
-features and the dictionaries.
+[`link-grammar/README.md`](link-grammar/README.md) covers the build and
+the dictionaries.
 
 ## Contributing
 
@@ -49,9 +49,8 @@ It runs `cargo package`, unpacks the `.crate` under
 
 LGPL-2.1, the same as link-grammar.
 
-The `bundled` build links link-grammar statically into your program. The
+The build links link-grammar statically into your program. The
 LGPL then requires that the people you distribute the program to can
 relink it against a modified link-grammar. You can do that by shipping
-your object files or your source code, or by turning off `bundled` and
-linking the system's shared library instead. Read the LGPL's section 6
-before you distribute a statically linked binary.
+your object files or your source code. Read the LGPL's section 6 before
+you distribute a statically linked binary.
