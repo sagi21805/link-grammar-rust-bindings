@@ -78,10 +78,15 @@ impl<L: Language> PartialEq<&str> for Word<'_, L> {
 }
 
 /// Words are equal when they print the same at the same position, so a
-/// word equals itself in another linkage of the same parse.
+/// word equals itself in another linkage of the same parse. Within one
+/// linkage, the position settles it.
 impl<L: Language> PartialEq for Word<'_, L> {
     fn eq(&self, other: &Self) -> bool {
-        self.index == other.index && self.as_str() == other.as_str()
+        self.index == other.index
+            // The C pointer, not the `&Linkage`, because each call to
+            // `Sentence::linkage` builds a new wrapper.
+            && (self.linkage.as_raw() == other.linkage.as_raw()
+                || self.as_str() == other.as_str())
     }
 }
 
