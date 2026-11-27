@@ -8,7 +8,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     #[error(
         "no dictionary for `{0}` was found. Point \
-         `Dictionary::set_data_dir` at a directory that contains it"
+         `link_grammar::set_data_dir` at a directory that contains it"
     )]
     DictionaryNotFound(String),
 

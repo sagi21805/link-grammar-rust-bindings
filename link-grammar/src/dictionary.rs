@@ -23,9 +23,8 @@ pub struct Dictionary {
 impl Dictionary {
     /// Loads the dictionary for `language`.
     ///
-    /// link-grammar searches the directory given to
-    /// [`set_data_dir`](Self::set_data_dir), then the dictionaries this
-    /// crate ships, then `./data`.
+    /// link-grammar searches the directory given to [`set_data_dir`], then
+    /// the dictionaries this crate ships, then `./data`.
     pub fn new(language: Language) -> Result<Self> {
         Self::create(OsStr::new(language.code()))
     }
@@ -50,16 +49,6 @@ impl Dictionary {
             dictionary.check_relations()?;
         }
         Ok(dictionary)
-    }
-
-    /// Makes later [`new`](Self::new) calls look in `path` first. `path`
-    /// holds one subdirectory per language.
-    pub fn set_data_dir(path: &Path) -> Result<()> {
-        let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
-        let _guard = DATA_DIR_LOCK.lock().expect("no panic while locked");
-        // SAFETY: `c_path` is NUL-terminated and link-grammar copies it.
-        unsafe { sys::dictionary_set_data_dir(c_path.as_ptr()) };
-        Ok(())
     }
 
     /// The language of the dictionary, which link-grammar takes from the
@@ -93,6 +82,16 @@ impl Drop for Dictionary {
         // sentence borrowing it is already gone.
         unsafe { sys::dictionary_delete(self.raw.as_ptr()) };
     }
+}
+
+/// Makes later [`Dictionary::new`] calls look in `path` first. `path`
+/// holds one subdirectory per language.
+pub fn set_data_dir(path: &Path) -> Result<()> {
+    let c_path = CString::new(path.as_os_str().as_encoded_bytes())?;
+    let _guard = DATA_DIR_LOCK.lock().expect("no panic while locked");
+    // SAFETY: `c_path` is NUL-terminated and link-grammar copies it.
+    unsafe { sys::dictionary_set_data_dir(c_path.as_ptr()) };
+    Ok(())
 }
 
 /// Serializes access to link-grammar's global data directory, which

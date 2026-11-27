@@ -26,7 +26,7 @@ mod subscript;
 mod verbosity;
 mod word;
 
-pub use dictionary::Dictionary;
+pub use dictionary::{Dictionary, set_data_dir};
 pub use english::Relation;
 pub use error::{Error, Result};
 pub use language::Language;

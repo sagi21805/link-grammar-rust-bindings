@@ -7,8 +7,7 @@ coded_enum! {
     ///
     /// Only [`English`](Self::English) ships with this crate. The others
     /// need their dictionary directory from link-grammar's `data/`, which
-    /// [`Dictionary::set_data_dir`](crate::Dictionary::set_data_dir)
-    /// points at.
+    /// [`set_data_dir`](crate::set_data_dir) points at.
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     #[non_exhaustive]
     pub enum Language {
