@@ -6,10 +6,7 @@
 
 use std::io::{self, BufRead};
 
-use link_grammar::{
-    Dictionary, Language, Linkage, Sentence, Verbosity, Word,
-    subscript::{Subject, SubjectKind},
-};
+use link_grammar::{Dictionary, Language, Sentence, Verbosity};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     link_grammar::set_verbosity(Verbosity::Silent);
@@ -20,28 +17,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Found {found} linkages");
         if let Some(linkage) = sentence.linkage(0) {
             println!("{}", linkage.diagram(80));
-
-            let singular_subjects = singluar_subjects(&linkage)
-                .iter()
-                .map(|w| w.text())
-                .collect::<Vec<_>>();
-
-            println!("{singular_subjects:#?}");
         }
     }
     Ok(())
-}
-
-fn singluar_subjects<'a>(l: &'a Linkage) -> Vec<Word<'a>> {
-    l.links_as::<Subject>()
-        .filter_map(|(l, s)| {
-            if let Some(kind) = s.kind
-                && let SubjectKind::Singular = kind
-            {
-                Some(l.left_word())
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>()
 }

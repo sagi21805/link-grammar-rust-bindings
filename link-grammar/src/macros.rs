@@ -54,32 +54,3 @@ macro_rules! coded_enum {
         }
     };
 }
-
-/// An enum of the letters one subscript position takes, written as
-/// `Singular = b's'`. The variant's discriminant is the letter's ASCII
-/// value.
-macro_rules! subscript_letters {
-    (
-        $(#[$attr:meta])*
-        pub enum $name:ident {
-            $($(#[$variant_attr:meta])* $variant:ident = $letter:literal,)+
-        }
-    ) => {
-        $(#[$attr])*
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-        #[repr(u8)]
-        #[non_exhaustive]
-        pub enum $name {
-            $($(#[$variant_attr])* $variant = $letter,)+
-        }
-
-        impl $crate::subscript::SubscriptLetter for $name {
-            fn from_letter(letter: u8) -> Option<Self> {
-                match letter {
-                    $($letter => Some(Self::$variant),)+
-                    _ => None,
-                }
-            }
-        }
-    };
-}

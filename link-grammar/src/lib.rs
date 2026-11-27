@@ -24,9 +24,8 @@ mod linkage;
 mod parse_options;
 mod part_of_speech;
 mod relation;
-mod relation_subscript;
 mod sentence;
-pub mod subscript;
+mod subscript;
 mod verbosity;
 mod word;
 
@@ -37,7 +36,6 @@ pub use link_label::{LinkLabel, LinkType};
 pub use linkage::{Link, Linkage};
 pub use part_of_speech::PartOfSpeech;
 pub use relation::Relation;
-pub use relation_subscript::RelationSubscript;
 pub use sentence::Sentence;
 pub use subscript::Subscript;
 pub use verbosity::{Verbosity, set_verbosity};
