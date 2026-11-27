@@ -13,16 +13,6 @@ use crate::{Error, Language, Result};
 ///
 /// [`Sentence`](crate::Sentence)s borrow the dictionary they are parsed
 /// with, so it outlives all of them.
-///
-/// ```no_run
-/// use std::path::Path;
-///
-/// use link_grammar::{Dictionary, Language};
-///
-/// Dictionary::set_data_dir(Path::new("link-grammar/data"))?;
-/// let russian = Dictionary::new(Language::Russian)?;
-/// # Ok::<(), link_grammar::Error>(())
-/// ```
 // TODO: Upstream allows sharing one dictionary between threads. Add
 // `Send` and `Sync` once something needs it.
 pub struct Dictionary {

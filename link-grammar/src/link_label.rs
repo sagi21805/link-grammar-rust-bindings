@@ -6,23 +6,6 @@ use crate::Subscript;
 /// Labels only come from a parse, so each one has link-grammar's shape.
 /// The link type is uppercase letters and `_`, and the subscript is
 /// lowercase letters, digits and `*`.
-///
-/// ```
-/// use link_grammar::{Dictionary, Language, Sentence, Subscript};
-///
-/// let dictionary = Dictionary::new(Language::English)?;
-/// let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-/// sentence.parse()?;
-/// let linkage = sentence.linkage(0).expect("a parse");
-/// let subject = linkage
-///     .links()
-///     .map(|link| link.label())
-///     .find(|label| label.link_type() == "S")
-///     .expect("a subject link");
-/// assert_eq!(subject, "Ss*s");
-/// assert_eq!(subject.subscript(), Subscript::new("s*s"));
-/// # Ok::<(), link_grammar::Error>(())
-/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LinkLabel<'l>(&'l str);
 

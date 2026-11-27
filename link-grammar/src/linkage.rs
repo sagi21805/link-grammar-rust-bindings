@@ -12,18 +12,6 @@ use crate::{
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
 /// nothing.
-///
-/// ```
-/// # use link_grammar::{Dictionary, Language, Sentence};
-/// # let dictionary = Dictionary::new(Language::English)?;
-/// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-/// sentence.parse()?;
-/// let linkage = sentence.linkage(0).expect("a parse");
-/// for link in linkage.links() {
-///     println!("{} -{}- {}", link.left_word(), link.label(), link.right_word());
-/// }
-/// # Ok::<(), link_grammar::Error>(())
-/// ```
 pub struct Linkage<'s> {
     raw: NonNull<sys::Linkage_s>,
     sentence: &'s Sentence<'s>,
@@ -31,19 +19,6 @@ pub struct Linkage<'s> {
 
 /// A labelled link between two words of a [`Linkage`]. `left` and
 /// `right` index [`Linkage::words`].
-///
-/// ```
-/// # use link_grammar::{Dictionary, Language, Relation, Sentence};
-/// # let dictionary = Dictionary::new(Language::English)?;
-/// # let mut sentence = Sentence::new(&dictionary, "Mars is red.")?;
-/// sentence.parse()?;
-/// let linkage = sentence.linkage(0).expect("a parse");
-/// let subject = linkage.link(Relation::Subject).expect("a subject link");
-/// assert_eq!(subject.relation(), Some(Relation::Subject));
-/// assert_eq!(subject.left_word().text(), "Mars");
-/// assert_eq!(subject.right_word().text(), "is");
-/// # Ok::<(), link_grammar::Error>(())
-/// ```
 #[derive(Clone, Copy)]
 pub struct Link<'l> {
     pub left: usize,

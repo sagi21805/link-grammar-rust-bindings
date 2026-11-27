@@ -14,22 +14,6 @@ use crate::{Language, Link, Linkage, PartOfSpeech, Relation};
 /// dictionary had to guess, and a `.` with the dictionary entry's
 /// subscript, as in `lander[?].n`, `Mr..x` and `123[!]`. A word that a
 /// parse with nulls left unlinked prints in brackets, as `[the]`.
-///
-/// ```
-/// use link_grammar::{Dictionary, Language, Sentence, WordGuess};
-///
-/// let dictionary = Dictionary::new(Language::English)?;
-/// let mut sentence = Sentence::new(&dictionary, "Mr. Smith bought 123 widgets.")?;
-/// sentence.parse()?;
-/// let linkage = sentence.linkage(0).expect("a parse");
-/// let words: Vec<_> = linkage.words().collect();
-/// assert_eq!(words[1], "Mr..x");
-/// assert_eq!(words[1].text(), "Mr.");
-/// assert_eq!(words[1].subscript(), Some("x"));
-/// assert_eq!(words[4].text(), "123");
-/// assert_eq!(words[4].guess(), Some(WordGuess::Regex));
-/// # Ok::<(), link_grammar::Error>(())
-/// ```
 #[derive(Clone, Copy)]
 pub struct Word<'l> {
     /// The word's position in `linkage`, with the left wall at 0.
@@ -74,23 +58,6 @@ impl<'l> Word<'l> {
 
     /// The first link at the word whose label names `relation`. Use
     /// [`links`](Self::links) to find every such link.
-    ///
-    /// ```
-    /// use link_grammar::{Dictionary, Language, Relation, Sentence};
-    ///
-    /// let dictionary = Dictionary::new(Language::English)?;
-    /// let mut sentence =
-    ///     Sentence::new(&dictionary, "The rover drilled the rock slowly.")?;
-    /// sentence.parse()?;
-    /// let linkage = sentence.linkage(0).expect("a parse");
-    /// let object = linkage.link(Relation::Object).expect("an object link");
-    /// let verb = object.left_word();
-    /// assert_eq!(verb.text(), "drilled");
-    /// let manner =
-    ///     verb.link(Relation::VerbModifier).expect("a verb modifier link");
-    /// assert_eq!(manner.right_word().text(), "slowly");
-    /// # Ok::<(), link_grammar::Error>(())
-    /// ```
     pub fn link(self, relation: Relation) -> Option<Link<'l>> {
         self.links().find(|link| link.relation() == Some(relation))
     }

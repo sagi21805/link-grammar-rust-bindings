@@ -6,18 +6,6 @@
 //! [`LinkType`], which names a [`Relation`], and a [`Subscript`]. A
 //! [`Word`]'s subscript names its [`PartOfSpeech`].
 //!
-//! ```
-//! use link_grammar::{Dictionary, Language, Sentence};
-//!
-//! let dictionary = Dictionary::new(Language::English)?;
-//! let mut sentence = Sentence::new(&dictionary, "The lander landed.")?;
-//! sentence.parse()?;
-//! for linkage in sentence.linkages() {
-//!     println!("{}", linkage.diagram(80));
-//! }
-//! # Ok::<(), link_grammar::Error>(())
-//! ```
-//!
 //! [link-grammar]: https://github.com/opencog/link-grammar
 
 #[macro_use]

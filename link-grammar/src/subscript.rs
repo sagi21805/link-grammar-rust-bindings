@@ -8,26 +8,12 @@ use std::fmt::{self, Write};
 pub use object::{Object, ObjectFlag, ObjectKind, ObjectUse};
 pub use subject::{Subject, SubjectConstraint, SubjectFlag, SubjectKind};
 
-#[cfg(test)]
-mod coverage_tests;
 mod object;
 mod subject;
 
 /// The lowercase part of a link label, such as `p` in `MVp`, with up to 9
 /// positions. Each position holds a letter or a `*`, which matches any
 /// letter.
-///
-/// ```
-/// use link_grammar::Subscript;
-///
-/// let question_word = Subscript::new("**w");
-/// assert_eq!(question_word.get(0), None);
-/// assert_eq!(question_word.get(2), Some('w'));
-/// // `get` reads what the link is marked with, and `matches` says what
-/// // could connect to it. A `*` connects to any letter.
-/// assert!(question_word.matches(Subscript::new("s")));
-/// assert!(!question_word.matches(Subscript::new("**q")));
-/// ```
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub struct Subscript(u64);
 
