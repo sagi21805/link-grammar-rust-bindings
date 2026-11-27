@@ -1,13 +1,14 @@
 use std::ffi::{CString, OsStr};
+use std::marker::PhantomData;
 use std::path::Path;
 use std::ptr::NonNull;
 use std::sync::Mutex;
 
 use link_grammar_sys as sys;
 
-use crate::c_str_ext::CStrPtr;
+use crate::english::English;
 use crate::internals_ext::{ConnectorDescriptor, DictionaryInternals};
-use crate::{Error, Language, Relation, Result};
+use crate::{Error, Language, LinkRelation, Result};
 
 /// The grammar and word list of one language.
 ///
@@ -15,18 +16,19 @@ use crate::{Error, Language, Relation, Result};
 /// with, so it outlives all of them.
 // TODO: Upstream allows sharing one dictionary between threads. Add
 // `Send` and `Sync` once something needs it.
-pub struct Dictionary {
+pub struct Dictionary<L: Language = English> {
     raw: NonNull<sys::Dictionary_s>,
-    language: Option<Language>,
+    language: PhantomData<L>,
 }
 
-impl Dictionary {
-    /// Loads the dictionary for `language`.
+impl<L: Language> Dictionary<L> {
+    /// Loads the dictionary for `L`. It takes the marker value, so `L` is
+    /// inferred at the call site.
     ///
     /// link-grammar searches the directory given to [`set_data_dir`], then
     /// the dictionaries this crate ships, then `./data`.
-    pub fn new(language: Language) -> Result<Self> {
-        Self::create(OsStr::new(language.code()))
+    pub fn new(_language: L) -> Result<Self> {
+        Self::create(OsStr::new(L::CODE))
     }
 
     /// Loads the dictionary that `dictionary_create_lang` finds for
@@ -39,22 +41,14 @@ impl Dictionary {
         let raw = NonNull::new(raw).ok_or_else(|| {
             Error::DictionaryNotFound(name.display().to_string())
         })?;
-        // SAFETY: `raw` is a live dictionary, which owns the string.
-        let code =
-            unsafe { sys::dictionary_get_lang(raw.as_ptr()).as_utf8() };
-        let language = Language::from_code(code);
-        let dictionary = Self { raw, language };
-        if language == Some(Language::English) {
-            // A failure drops `dictionary`, which deletes it.
-            dictionary.check_relations()?;
-        }
+        let dictionary = Self {
+            raw,
+            language: PhantomData,
+        };
+        // A failure drops `dictionary`, which deletes it.
+        dictionary.check_relations()?;
         Ok(dictionary)
     }
-
-    /// The language of the dictionary, which link-grammar takes from the
-    /// name of its directory. It is `None` when that name isn't a
-    /// [`Language::code`].
-    pub fn language(&self) -> Option<Language> { self.language }
 
     /// Fails unless each link type number names the variant whose code is
     /// the link type. A stale enum fails here instead of mislabelling
@@ -64,7 +58,7 @@ impl Dictionary {
             let name = connector.link_type_name();
             let expected =
                 if name.starts_with("_I") { "_I" } else { name };
-            Relation::from_number(connector.uc_num).code() != expected
+            L::Relation::from_number(connector.uc_num).code() != expected
         });
         if stale {
             return Err(Error::StaleRelations);
@@ -76,7 +70,7 @@ impl Dictionary {
     pub(crate) fn as_raw(&self) -> sys::Dictionary { self.raw.as_ptr() }
 }
 
-impl Drop for Dictionary {
+impl<L: Language> Drop for Dictionary<L> {
     fn drop(&mut self) {
         // SAFETY: `raw` came from `dictionary_create_lang`, and every
         // sentence borrowing it is already gone.

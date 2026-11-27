@@ -6,11 +6,12 @@
 
 use std::io::{self, BufRead};
 
-use link_grammar::{Dictionary, Language, Sentence, Verbosity};
+use link_grammar::english::English;
+use link_grammar::{Dictionary, Sentence, Verbosity};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     link_grammar::set_verbosity(Verbosity::Silent);
-    let dictionary = Dictionary::new(Language::English)?;
+    let dictionary = Dictionary::new(English)?;
     for line in io::stdin().lock().lines().take(1) {
         let mut sentence = Sentence::new(&dictionary, &line?)?;
         let found = sentence.parse()?;

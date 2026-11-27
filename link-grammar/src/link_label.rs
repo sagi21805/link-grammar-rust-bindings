@@ -10,8 +10,8 @@ use crate::Subscript;
 pub struct LinkLabel<'l>(&'l str);
 
 /// The uppercase part of a [`LinkLabel`], such as `MV`.
-/// [`Link::relation`](crate::Link::relation) reads it as a grammatical
-/// [`Relation`](crate::Relation).
+/// [`Link::relation`](crate::Link::relation) reads it as a variant of the
+/// language's relation enum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LinkType<'l>(&'l str);
 

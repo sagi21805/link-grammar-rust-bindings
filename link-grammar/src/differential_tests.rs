@@ -1,6 +1,6 @@
 //! Checks that the readers over link-grammar's private structs agree
-//! with the C getters and the printed words, sentence by sentence of the
-//! English corpus.
+//! with the C getters and the printed words, sentence by sentence of a
+//! language's corpus.
 
 use std::fs;
 use std::path::Path;
@@ -9,15 +9,16 @@ use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
 use crate::{
-    Dictionary, Language, Linkage, Relation, Sentence, Verbosity,
+    Dictionary, Language, LinkRelation, Linkage, Sentence, Verbosity,
 };
 
-#[test]
-fn readers_agree_with_the_c_getters() {
+/// Every linkage of every sentence of `L`'s `corpus-basic.batch`, read
+/// through the private structs and through the C getters.
+pub(crate) fn check_corpus<L: Language>() {
     crate::set_verbosity(Verbosity::Silent);
-    let dictionary =
-        Dictionary::new(Language::English).expect("English is bundled");
-    for text in corpus() {
+    let dictionary = Dictionary::new(L::default())
+        .expect("the language's dictionary is bundled");
+    for text in corpus(L::CODE) {
         let mut sentence = Sentence::new(&dictionary, &text)
             .expect("corpus text has no NUL");
         if sentence.parse().is_err() {
@@ -33,18 +34,16 @@ fn readers_agree_with_the_c_getters() {
 /// Every link's label, relation, subscript and ends, read both ways. A
 /// wrong struct layout, say after the submodule tag moves, gives garbage
 /// or undefined behaviour with no compile error, and this catches it.
-fn assert_links_agree(text: &str, linkage: &Linkage<'_>) {
+fn assert_links_agree<L: Language>(text: &str, linkage: &Linkage<'_, L>) {
     for (index, link) in linkage.links().enumerate() {
         let label = c_label(linkage, index);
         assert_eq!(link.label().as_str(), label, "{link:?} in {text:?}");
         let name = link.label().link_type().as_str();
-        match link.relation().expect("the corpus is English") {
-            Relation::Idiom => {
+        match link.relation().code() {
+            "_I" => {
                 assert!(name.starts_with("_I"), "{link:?} in {text:?}")
             }
-            relation => {
-                assert_eq!(relation.code(), name, "{link:?} in {text:?}")
-            }
+            code => assert_eq!(code, name, "{link:?} in {text:?}"),
         }
         assert_eq!(
             link.subscript(),
@@ -60,7 +59,7 @@ fn assert_links_agree(text: &str, linkage: &Linkage<'_>) {
 }
 
 /// Every word's text against its printed form.
-fn assert_words_agree(text: &str, linkage: &Linkage<'_>) {
+fn assert_words_agree<L: Language>(text: &str, linkage: &Linkage<'_, L>) {
     for word in linkage.words() {
         // `as_str` calls `linkage_get_word`.
         assert_eq!(
@@ -72,7 +71,10 @@ fn assert_words_agree(text: &str, linkage: &Linkage<'_>) {
 }
 
 /// `linkage_get_link_label`.
-fn c_label<'l>(linkage: &'l Linkage<'_>, index: usize) -> &'l str {
+fn c_label<'l, L: Language>(
+    linkage: &'l Linkage<'_, L>,
+    index: usize,
+) -> &'l str {
     // SAFETY: `index` is below the link count, and the label lives as long
     // as the linkage.
     unsafe {
@@ -81,7 +83,10 @@ fn c_label<'l>(linkage: &'l Linkage<'_>, index: usize) -> &'l str {
 }
 
 /// `linkage_get_link_lword` and `linkage_get_link_rword`.
-fn c_ends(linkage: &Linkage<'_>, index: usize) -> (usize, usize) {
+fn c_ends<L: Language>(
+    linkage: &Linkage<'_, L>,
+    index: usize,
+) -> (usize, usize) {
     let raw = linkage.as_raw();
     // SAFETY: `index` is below the link count.
     unsafe {
@@ -127,13 +132,15 @@ fn subscript_dot(printed: &str) -> Option<usize> {
     })
 }
 
-/// The sentences of `corpus-basic.batch`, without comments, commands,
-/// blank lines and the `*` that marks an ungrammatical sentence.
-fn corpus() -> Vec<String> {
+/// The sentences of `<code>/corpus-basic.batch` in the bundled data,
+/// without comments, commands, blank lines and the `*` that marks an
+/// ungrammatical sentence.
+fn corpus(code: &str) -> Vec<String> {
     let path = Path::new(link_grammar_sys::BUNDLED_DATA_DIR)
-        .join("en/corpus-basic.batch");
+        .join(code)
+        .join("corpus-basic.batch");
     fs::read_to_string(path)
-        .expect("the bundled data has the English corpus")
+        .expect("the bundled data has the language's corpus")
         .lines()
         .filter(|line| !line.trim().is_empty())
         .filter(|line| !line.starts_with(['%', '!']))

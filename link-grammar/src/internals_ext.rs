@@ -7,9 +7,9 @@ use extend::ext;
 use link_grammar_sys::internals;
 
 use crate::c_str_ext::CStrPtr;
-use crate::{Dictionary, Linkage, Subscript};
+use crate::{Dictionary, Language, Linkage, Subscript};
 
-impl Linkage<'_> {
+impl<L: Language> Linkage<'_, L> {
     /// The linkage's private fields.
     pub(crate) fn internals(&self) -> &internals::Linkage_s {
         // SAFETY: `raw` came from `linkage_create`, so it points to a full
@@ -18,7 +18,7 @@ impl Linkage<'_> {
     }
 }
 
-impl Dictionary {
+impl<L: Language> Dictionary<L> {
     /// The dictionary's private fields.
     pub(crate) fn internals(&self) -> &internals::Dictionary_s {
         // SAFETY: `raw` came from `dictionary_create_lang`, so it points

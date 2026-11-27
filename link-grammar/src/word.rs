@@ -3,8 +3,9 @@ use std::hash::{Hash, Hasher};
 
 use link_grammar_sys::internals;
 
+use crate::english::English;
 use crate::internals_ext::{DisjunctInternals, LinkageInternals};
-use crate::{Link, Linkage};
+use crate::{Language, Link, Linkage};
 
 /// A word of a [`Linkage`](crate::Linkage), as link-grammar prints it.
 ///
@@ -13,15 +14,15 @@ use crate::{Link, Linkage};
 /// subscript, as in `lander[?].n`, `Mr..x` and `123[!]`. A word that a
 /// parse with nulls left unlinked prints in brackets, as `[the]`.
 #[derive(Clone, Copy)]
-pub struct Word<'l> {
+pub struct Word<'l, L: Language = English> {
     /// The word's position in `linkage`, with the left wall at 0.
     index: usize,
-    linkage: &'l Linkage<'l>,
+    linkage: &'l Linkage<'l, L>,
 }
 
-impl<'l> Word<'l> {
+impl<'l, L: Language> Word<'l, L> {
     /// The word of `linkage` at `index`, which is below the word count.
-    pub(crate) fn new(index: usize, linkage: &'l Linkage<'l>) -> Self {
+    pub(crate) fn new(index: usize, linkage: &'l Linkage<'l, L>) -> Self {
         Self { index, linkage }
     }
 
@@ -31,7 +32,7 @@ impl<'l> Word<'l> {
     }
 
     /// The links with an end at the word, in the linkage's order.
-    pub fn links(self) -> impl Iterator<Item = Link<'l>> {
+    pub fn links(self) -> impl Iterator<Item = Link<'l, L>> {
         self.linkage.links().filter(move |link| {
             link.left == self.index || link.right == self.index
         })
@@ -66,27 +67,27 @@ impl<'l> Word<'l> {
     }
 }
 
-impl fmt::Display for Word<'_> {
+impl<L: Language> fmt::Display for Word<'_, L> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl PartialEq<&str> for Word<'_> {
+impl<L: Language> PartialEq<&str> for Word<'_, L> {
     fn eq(&self, other: &&str) -> bool { self.as_str() == *other }
 }
 
 /// Words are equal when they print the same at the same position, so a
 /// word equals itself in another linkage of the same parse.
-impl PartialEq for Word<'_> {
+impl<L: Language> PartialEq for Word<'_, L> {
     fn eq(&self, other: &Self) -> bool {
         self.index == other.index && self.as_str() == other.as_str()
     }
 }
 
-impl Eq for Word<'_> {}
+impl<L: Language> Eq for Word<'_, L> {}
 
-impl Hash for Word<'_> {
+impl<L: Language> Hash for Word<'_, L> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.index.hash(state);
         self.as_str().hash(state);
@@ -94,7 +95,7 @@ impl Hash for Word<'_> {
 }
 
 /// The printed form and position, followed by the word's text.
-impl fmt::Debug for Word<'_> {
+impl<L: Language> fmt::Debug for Word<'_, L> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Word")
             .field("printed", &self.as_str())

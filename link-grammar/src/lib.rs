@@ -3,7 +3,11 @@
 //! A [`Dictionary`] holds a language's grammar. A [`Sentence`] borrows it,
 //! and parsing the sentence finds its [`Linkage`]s, each a set of
 //! [`Link`]s between [`Word`]s. A link's [`LinkLabel`] splits into a
-//! [`LinkType`], which names a [`Relation`], and a [`Subscript`].
+//! [`LinkType`] and a [`Subscript`].
+//!
+//! Each [`Language`] is a marker type, such as [`english::English`], with
+//! its own relation enum, such as [`english::Relation`], whose variants
+//! the link types name. A type that leaves the language out means English.
 //!
 //! [link-grammar]: https://github.com/opencog/link-grammar
 
@@ -27,9 +31,8 @@ mod verbosity;
 mod word;
 
 pub use dictionary::{Dictionary, set_data_dir};
-pub use english::Relation;
 pub use error::{Error, Result};
-pub use language::Language;
+pub use language::{Language, LinkRelation};
 pub use link_label::{LinkLabel, LinkType};
 pub use linkage::{Link, Linkage};
 pub use sentence::Sentence;

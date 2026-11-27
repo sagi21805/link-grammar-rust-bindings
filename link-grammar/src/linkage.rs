@@ -1,45 +1,48 @@
 use std::fmt;
+use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use link_grammar_sys as sys;
 
 use crate::c_str_ext::CStrPtr;
+use crate::english::English;
 use crate::internals_ext::{LinkInternals, LinkageInternals};
 use crate::{
-    Dictionary, Language, LinkLabel, Relation, Sentence, Subscript, Word,
+    Language, LinkLabel, LinkRelation, Sentence, Subscript, Word,
 };
 
 /// One parse of a [`Sentence`](crate::Sentence). Its storage belongs to
 /// the sentence, so it borrows the sentence, and dropping it frees
 /// nothing.
-pub struct Linkage<'s> {
+pub struct Linkage<'s, L: Language = English> {
     raw: NonNull<sys::Linkage_s>,
-    sentence: &'s Sentence<'s>,
+    /// Blocks a reparse while a linkage lives.
+    sentence: PhantomData<&'s Sentence<'s, L>>,
 }
 
 /// A labelled link between two words of a [`Linkage`]. `left` and
 /// `right` index [`Linkage::words`].
 #[derive(Clone, Copy)]
-pub struct Link<'l> {
+pub struct Link<'l, L: Language = English> {
     pub left: usize,
     pub right: usize,
     /// The link's position in the linkage, as the C API numbers links.
     index: usize,
-    linkage: &'l Linkage<'l>,
+    linkage: &'l Linkage<'l, L>,
 }
 
-impl<'l> Link<'l> {
+impl<'l, L: Language> Link<'l, L> {
     /// The word at the link's left end.
-    pub fn left_word(&self) -> Word<'l> { self.linkage.word(self.left) }
+    pub fn left_word(&self) -> Word<'l, L> { self.linkage.word(self.left) }
 
     /// The word at the link's right end.
-    pub fn right_word(&self) -> Word<'l> { self.linkage.word(self.right) }
+    pub fn right_word(&self) -> Word<'l, L> {
+        self.linkage.word(self.right)
+    }
 
-    /// The relation the link's [`LinkType`](crate::LinkType) names. It
-    /// is `None` for every language but English.
-    pub fn relation(&self) -> Option<Relation> {
-        (self.linkage.dictionary().language() == Some(Language::English))
-            .then(|| Relation::from_number(self.raw().link_type()))
+    /// The relation the link's [`LinkType`](crate::LinkType) names.
+    pub fn relation(&self) -> L::Relation {
+        L::Relation::from_number(self.raw().link_type())
     }
 
     /// The lowercase part of the link's label, such as `s*s` in `Ss*s`.
@@ -57,7 +60,7 @@ impl<'l> Link<'l> {
 }
 
 /// The indices and label, followed by the words at the indices.
-impl fmt::Debug for Link<'_> {
+impl<L: Language> fmt::Debug for Link<'_, L> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Link")
             .field("left", &self.left)
@@ -69,7 +72,7 @@ impl fmt::Debug for Link<'_> {
     }
 }
 
-impl<'s> Linkage<'s> {
+impl<'s, L: Language> Linkage<'s, L> {
     /// Wraps a handle from `linkage_create` for `sentence`. The borrow
     /// keeps `sentence` from being reparsed while the linkage lives.
     ///
@@ -78,19 +81,22 @@ impl<'s> Linkage<'s> {
     /// `raw` came from `linkage_create` for `sentence`.
     pub(crate) unsafe fn from_raw(
         raw: NonNull<sys::Linkage_s>,
-        sentence: &'s Sentence<'s>,
+        _sentence: &'s Sentence<'s, L>,
     ) -> Self {
-        Self { raw, sentence }
+        Self {
+            raw,
+            sentence: PhantomData,
+        }
     }
 
     /// The words of the linkage, left wall first.
-    pub fn words(&self) -> impl ExactSizeIterator<Item = Word<'_>> {
+    pub fn words(&self) -> impl ExactSizeIterator<Item = Word<'_, L>> {
         let count = unsafe { sys::linkage_get_num_words(self.as_raw()) };
         (0..count).map(|index| self.word(index))
     }
 
     /// The links of the linkage.
-    pub fn links(&self) -> impl ExactSizeIterator<Item = Link<'_>> {
+    pub fn links(&self) -> impl ExactSizeIterator<Item = Link<'_, L>> {
         self.internals()
             .links()
             .iter()
@@ -116,7 +122,7 @@ impl<'s> Linkage<'s> {
     }
 
     /// The word at `index`, which is below the word count.
-    fn word(&self, index: usize) -> Word<'_> { Word::new(index, self) }
+    fn word(&self, index: usize) -> Word<'_, L> { Word::new(index, self) }
 
     /// The printed form of the word at `index`, which is below the word
     /// count.
@@ -124,11 +130,6 @@ impl<'s> Linkage<'s> {
         // SAFETY: `index` is below the word count, and the word lives as
         // long as the linkage.
         unsafe { sys::linkage_get_word(self.as_raw(), index).as_utf8() }
-    }
-
-    /// The dictionary the sentence was parsed with.
-    pub(crate) fn dictionary(&self) -> &'s Dictionary {
-        self.sentence.dictionary()
     }
 
     /// The handle the C API takes.

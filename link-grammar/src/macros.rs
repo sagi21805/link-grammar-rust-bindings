@@ -22,39 +22,6 @@ macro_rules! borrowed_str {
     )*};
 }
 
-/// An enum whose variants each stand for one code, written as
-/// `"en" => English`, with lookups both ways.
-macro_rules! coded_enum {
-    (
-        $(#[$attr:meta])*
-        pub enum $name:ident {
-            $($(#[$variant_attr:meta])* $code:literal => $variant:ident,)*
-        }
-    ) => {
-        $(#[$attr])*
-        pub enum $name {
-            $($(#[$variant_attr])* $variant,)*
-        }
-
-        impl $name {
-            /// The code the variant stands for.
-            pub fn code(self) -> &'static str {
-                match self {
-                    $(Self::$variant => $code,)*
-                }
-            }
-
-            /// The variant that stands for `code`, if one does.
-            pub(crate) fn from_code(code: &str) -> Option<Self> {
-                match code {
-                    $($code => Some(Self::$variant),)*
-                    _ => None,
-                }
-            }
-        }
-    };
-}
-
 /// A link-grammar language's relations, one variant per link type in
 /// number order, plus `Idiom` for every `_I` type.
 macro_rules! link_relations {
@@ -79,9 +46,10 @@ macro_rules! link_relations {
             const ALL: &[Self] = &[$(Self::$variant,)*];
             /// The code of each variant, `Idiom`'s last.
             const CODES: &[&str] = &[$($code,)* "_I"];
+        }
 
-            /// The variant for a link type number of the dictionary.
-            pub(crate) fn from_number(number: u32) -> Self {
+        impl $crate::LinkRelation for $name {
+            fn from_number(number: u32) -> Self {
                 // Idiom types are numbered after the rest.
                 Self::ALL
                     .get(number as usize)
@@ -89,8 +57,7 @@ macro_rules! link_relations {
                     .unwrap_or(Self::Idiom)
             }
 
-            /// The link type, such as `MV`, or `_I` for an idiom.
-            pub fn code(self) -> &'static str { Self::CODES[self as usize] }
+            fn code(self) -> &'static str { Self::CODES[self as usize] }
         }
     };
 }
