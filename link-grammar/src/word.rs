@@ -175,7 +175,7 @@ impl<'l> Word<'l> {
     }
 
     /// The printed form split into the word, the guess and the subscript.
-    #[cfg(any(test, not(feature = "bundled")))]
+    #[cfg(not(feature = "bundled"))]
     pub(crate) fn parts(self) -> WordParts<'l> {
         let printed = self.unlinked_inner().unwrap_or(self.as_str());
         WordParts::with_guess(printed)
@@ -235,7 +235,7 @@ const SUBSCRIPT_MARK: char = internals::SUBSCRIPT_MARK as char;
 const IDIOM_SUBSCRIPT: &str = "_I";
 
 /// The pieces of a printed word.
-#[cfg(any(test, not(feature = "bundled")))]
+#[cfg(not(feature = "bundled"))]
 #[derive(Debug, PartialEq)]
 pub(crate) struct WordParts<'l> {
     pub(crate) text: &'l str,
@@ -243,7 +243,7 @@ pub(crate) struct WordParts<'l> {
     pub(crate) subscript: Option<&'l str>,
 }
 
-#[cfg(any(test, not(feature = "bundled")))]
+#[cfg(not(feature = "bundled"))]
 impl<'l> WordParts<'l> {
     /// `text[mark…]` or `text[mark…].subscript`. The brackets may hold a
     /// regex name after the mark.
@@ -288,7 +288,7 @@ impl<'l> WordParts<'l> {
     }
 }
 
-#[cfg(any(test, not(feature = "bundled")))]
+#[cfg(not(feature = "bundled"))]
 impl WordGuess {
     /// The guess that prints `mark`, one of `!`, `~`, `&` and `?`.
     fn from_mark(mark: char) -> Option<Self> {

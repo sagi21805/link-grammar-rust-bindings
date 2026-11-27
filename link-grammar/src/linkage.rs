@@ -76,7 +76,7 @@ impl<'l> Link<'l> {
 
     /// The relation the label's link type names, read from the printed
     /// label.
-    #[cfg(any(test, not(feature = "bundled")))]
+    #[cfg(not(feature = "bundled"))]
     pub(crate) fn relation_from_label(&self) -> Option<Relation> {
         match self.linkage.language() {
             Some(Language::English) => Relation::from_english_link_type(
